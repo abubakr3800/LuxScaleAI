@@ -48,7 +48,7 @@ body{
     background-color: var(--clr-neutral-300);
     font-family: var(--fm-p);
     font-size: var(--fs);
-    overflow: hidden;
+    /* overflow: hidden; */
 }
 
 #myVideo{
