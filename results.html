@@ -1,37 +1,178 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Lighting Results</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
 </head>
-<body>
-    
+<body class="bg-light">
+
+  <div class="container py-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h2 class="text-primary">Lighting Simulation Results</h2>
+
+    <div class="d-flex gap-2">
+        <button id="downloadBtn" class="btn btn-success">Download CSV</button>
+        <button id="pdfBtn" class="btn btn-primary">Download PDF</button>
+    </div>
+
+    </div>
+    <div id="resultsContainer" class="row g-4">
+      <!-- Cards will be injected here -->
+    </div>
+  </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/pdf-lib/dist/pdf-lib.min.js"></script>
+
+
+  <script>
+    function generateCSV(results) {
+      const headers = Object.keys(results[0]);
+      const csvRows = [];
+
+      // Add headers row
+      csvRows.push(headers.join(","));
+
+      // Add data rows
+      results.forEach(obj => {
+        const row = headers.map(header => `"${obj[header]}"`);
+        csvRows.push(row.join(","));
+      });
+
+      return csvRows.join("\n");
+    }
+
+    function downloadCSV(data, filename = "results.csv") {
+      const blob = new Blob([data], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      link.setAttribute("href", URL.createObjectURL(blob));
+      link.setAttribute("download", filename);
+      link.style.display = "none";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    if (document.cookie.includes("results")) {
+      const results = JSON.parse(document.cookie.split("=")[1].split(";")[0]);
+      const container = document.getElementById("resultsContainer");
+
+      let counter = 1;
+
+      results.forEach(result => {
+        const card = document.createElement("div");
+        card.className = "col-md-4 col-12";
+
+        card.innerHTML = `
+          <div class="card shadow-sm h-100">
+            <div class="card-body">
+              <h5 class="card-title">Option ${counter++}</h5>
+              <ul class="list-group list-group-flush">
+                <li class="list-group-item"><strong>Luminaire:</strong> ${result["Luminaire"]}</li>
+                <li class="list-group-item"><strong>Power (W):</strong> ${result["Power (W)"]}</li>
+                <li class="list-group-item"><strong>Efficacy (lm/W):</strong> ${result["Efficacy (lm/W)"]}</li>
+                <li class="list-group-item"><strong>Fixtures:</strong> ${result["Fixtures"]}</li>
+                <li class="list-group-item"><strong>Spacing X (m):</strong> ${result["Spacing X (m)"]}</li>
+                <li class="list-group-item"><strong>Spacing Y (m):</strong> ${result["Spacing Y (m)"]}</li>
+                <li class="list-group-item"><strong>Average Lux:</strong> ${result["Average Lux"]}</li>
+                <li class="list-group-item"><strong>Uniformity:</strong> ${result["Uniformity"]}</li>
+                <li class="list-group-item"><strong>Total Power (W):</strong> ${result["Total Power (W)"]}</li>
+              </ul>
+            </div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+
+      document.getElementById("downloadBtn").addEventListener("click", () => {
+        let csv = generateCSV(results);
+
+        downloadCSV(csv);
+      });
+
+    } else {
+      window.location.href = "index.html";
+    }
+  </script>
+
     <script>
-        // console.log(document.cookie);
-        if (document.cookie.includes("results")) {
-            const results = JSON.parse(document.cookie.split("=")[1].split(";")[0]);
-            console.log(results);
-            var counter = 1;
-            results.forEach(result => {
-                var html = "";
-                html += `<div class="result">`;
-                html += `<h3>option: ${ counter++}</h3>`;
-                html += `<p>Luminaire: ${result["Luminaire"]}</p>`;
-                html += `<p>Power (W): ${result["Power (W)"]}</p>`;
-                html += `<p>Efficacy (lm/W): ${result["Efficacy (lm/W)"]}</p>`;
-                html += `<p>Fixtures: ${result["Fixtures"]}</p>`;
-                html += `<p>Spacing X (m): ${result["Spacing X (m)"]}</p>`;
-                html += `<p>Spacing Y (m): ${result["Spacing Y (m)"]}</p>`;
-                html += `<p>Average Lux: ${result["Average Lux"]}</p>`;
-                html += `<p>Uniformity: ${result["Uniformity"]}</p>`;
-                html += `<p>Total Power (W): ${result["Total Power (W)"]}</p>`;
-                html += `</div>`;
-                document.body.innerHTML += html;
+    const backgroundImageUrl = "assets/pdfBG.png"; // Replace with your actual image path
+
+    async function generatePDF(results) {
+        const { PDFDocument, rgb, StandardFonts } = PDFLib;
+        const pdfDoc = await PDFDocument.create();
+        const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+
+        // Load background PNG
+        const bgImageBytes = await fetch(backgroundImageUrl).then(res => res.arrayBuffer());
+        const bgImage = await pdfDoc.embedPng(bgImageBytes);
+
+        for (let i = 0; i < results.length; i++) {
+        const result = results[i];
+        const page = pdfDoc.addPage([595.28, 841.89]); // A4 size
+
+        // Draw background
+        page.drawImage(bgImage, {
+            x: 0,
+            y: 0,
+            width: page.getWidth(),
+            height: page.getHeight(),
+        });
+
+        // Text rendering
+        const marginX = 70;
+        let y = page.getHeight() - 100;
+
+        page.drawText(`Option ${i + 1}`, {
+            x: marginX,
+            y: y,
+            size: 20,
+            font: font,
+            color: rgb(0.1, 0.1, 0.6),
+        });
+
+        y -= 30;
+
+        const fields = [
+            "Luminaire", "Power (W)", "Efficacy (lm/W)", "Fixtures",
+            "Spacing X (m)", "Spacing Y (m)", "Average Lux",
+            "Uniformity", "Total Power (W)"
+        ];
+
+        fields.forEach(field => {
+            page.drawText(`${field}: ${result[field]}`, {
+            x: marginX,
+            y: y,
+            size: 14,
+            font: font,
+            color: rgb(0, 0, 0),
             });
-        }else{
-            window.location.href = "index.html";
+            y -= 22;
+        });
         }
+
+        const pdfBytes = await pdfDoc.save();
+        const blob = new Blob([pdfBytes], { type: "application/pdf" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        resDate = new Date();
+        link.style.display = "none";
+        document.body.appendChild(link);
+        link.setAttribute("download", `lighting_results_${resDate.toISOString().split('T')[0]}.pdf`);
+        link.href = URL.createObjectURL(blob);
+        link.click();
+    }
+
+    document.getElementById("pdfBtn").addEventListener("click", async () => {
+        if (document.cookie.includes("results")) {
+        const results = JSON.parse(document.cookie.split("=")[1].split(";")[0]);
+        await generatePDF(results);
+        }
+    });
     </script>
+
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
