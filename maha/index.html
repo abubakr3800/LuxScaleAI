@@ -1,184 +1,408 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Lighting Design Calculator</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Lighting Design — Client</title>
+
+  <!-- Bootstrap CSS (CDN) -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <style>
+    body { padding: 20px; background: #f7f9fc; }
+    .card { box-shadow: 0 6px 18px rgba(18,38,63,.06); }
+    pre { white-space: pre-wrap; word-wrap: break-word; }
+    canvas { border:1px solid #ddd; background:white; }
+    .small-muted { font-size: .85rem; color: #6c757d; }
+  </style>
 </head>
-<body class="bg-light">
+<body>
+  <div class="container">
+    <h1 class="mb-3">Lighting Design — Frontend</h1>
 
-<div class="container mt-4">
-    <h2 class="mb-4 text-center">Lighting Design Calculator</h2>
-    
-    <div class="card p-4 shadow-sm">
-        <form id="calcForm">
-            <h5>Project Information</h5>
-            <div class="row g-3">
-                <div class="col-md-6">
-                    <label class="form-label">Project Name</label>
-                    <input type="text" class="form-control" name="Project Name" required>
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label">Client Name</label>
-                    <input type="text" class="form-control" name="Client Name" required>
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label">Client Number</label>
-                    <input type="text" class="form-control" name="Client Number" required>
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label">Company Name</label>
-                    <input type="text" class="form-control" name="Company Name" required>
-                </div>
+    <div class="row">
+      <div class="col-lg-6">
+        <div class="card mb-3 p-3">
+          <h5>Project & Room</h5>
+          <form id="calcForm" class="row g-2">
+            <div class="col-md-6">
+              <label class="form-label">Project Name</label>
+              <input class="form-control" id="projectName" placeholder="My Project">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Client Name</label>
+              <input class="form-control" id="clientName" placeholder="Client">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Client Number</label>
+              <input class="form-control" id="clientNumber" placeholder="Phone">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Company Name</label>
+              <input class="form-control" id="companyName" placeholder="Company">
             </div>
 
-            <hr>
-            <h5>Room Details</h5>
-            <div class="row g-3">
-                <div class="col-md-4">
-                    <label class="form-label">Place</label>
-                    <select class="form-select" id="place" required>
-                        <option value="Room">Room</option>
-                        <option value="Office">Office</option>
-                        <option value="Cafe">Cafe</option>
-                        <option value="Factory production line">Factory production line</option>
-                        <option value="Factory warehouse">Factory warehouse</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">Side A (m)</label>
-                    <input type="number" class="form-control" id="sideA" step="0.01" required>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">Side B (m)</label>
-                    <input type="number" class="form-control" id="sideB" step="0.01" required>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">Side C (m)</label>
-                    <input type="number" class="form-control" id="sideC" step="0.01" required>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">Side D (m)</label>
-                    <input type="number" class="form-control" id="sideD" step="0.01" required>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">Height (m)</label>
-                    <input type="number" class="form-control" id="height" step="0.01" required>
-                </div>
+            <div class="col-12">
+              <label class="form-label">Place (type)</label>
+              <select id="place" class="form-select">
+                <option>Room</option>
+                <option>Office</option>
+                <option>Cafe</option>
+                <option>Factory production line</option>
+                <option>Factory warehouse</option>
+              </select>
             </div>
 
-            <div class="mt-4">
-                <button type="submit" class="btn btn-primary">Calculate</button>
-                <button type="button" id="downloadPdf" class="btn btn-success">Download PDF</button>
+            <div class="col-6">
+              <label class="form-label">Side A (m)</label>
+              <input class="form-control" id="sideA" type="number" step="0.01" value="8">
             </div>
-        </form>
-    </div>
+            <div class="col-6">
+              <label class="form-label">Side B (m)</label>
+              <input class="form-control" id="sideB" type="number" step="0.01" value="6">
+            </div>
+            <div class="col-6">
+              <label class="form-label">Side C (m)</label>
+              <input class="form-control" id="sideC" type="number" step="0.01" value="8">
+            </div>
+            <div class="col-6">
+              <label class="form-label">Side D (m)</label>
+              <input class="form-control" id="sideD" type="number" step="0.01" value="6">
+            </div>
 
-    <div class="card p-4 shadow-sm mt-4">
-        <h5>Results</h5>
-        <div class="table-responsive">
-            <table class="table table-bordered" id="resultsTable">
-                <thead>
-                    <tr>
-                        <th>Luminaire</th>
-                        <th>Power (W)</th>
-                        <th>Efficacy (lm/W)</th>
-                        <th>Fixtures</th>
-                        <th>Spacing X (m)</th>
-                        <th>Spacing Y (m)</th>
-                        <th>Average Lux</th>
-                        <th>Uniformity</th>
-                        <th>Total Power (W)</th>
-                        <th>Beam Angle (°)</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
+            <div class="col-6">
+              <label class="form-label">Height (m)</label>
+              <input class="form-control" id="height" type="number" step="0.01" value="3">
+            </div>
+
+            <div class="col-12 d-flex gap-2 mt-2">
+              <button type="button" id="btnCalculate" class="btn btn-primary">Calculate</button>
+              <button type="button" id="btnDownloadPdf" class="btn btn-outline-primary">Download PDF</button>
+              <button type="button" id="btnExportCsv" class="btn btn-outline-success">Export CSV</button>
+              <button type="reset" id="btnReset" class="btn btn-secondary ms-auto">Reset</button>
+            </div>
+            <div class="col-12 mt-2">
+              <div id="alertBox"></div>
+              <div class="small-muted">Tip: If the API is on a different origin, enable CORS on the Flask app.</div>
+            </div>
+          </form>
         </div>
+
+        <div class="card p-3">
+          <h5>Results</h5>
+          <div id="resultsArea">
+            <p class="text-muted">No calculation yet. Click <strong>Calculate</strong>.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-6">
+        <div class="card p-3 mb-3">
+          <h5>Visual Distribution</h5>
+          <p class="small-muted">A simple grid approximation is drawn using the first result's fixture count.</p>
+          <canvas id="distCanvas" width="600" height="420"></canvas>
+        </div>
+
+        <div class="card p-3">
+          <h5>Raw JSON</h5>
+          <pre id="rawJson" style="height:200px; overflow:auto;">{ }</pre>
+        </div>
+      </div>
     </div>
-</div>
+  </div>
 
-<script>
-const apiBase = "https://mahamonir.pythonanywhere.com"; // Change to your server URL
+  <!-- Bootstrap JS (CDN) + small helper -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
-document.getElementById("calcForm").addEventListener("submit", async (e) => {
-    e.preventDefault();
+  <script>
+    // === Configure API base url ===
+    const API_BASE = "https://mahamonir.pythonanywhere.com";
 
-    const projectInfo = {};
-    document.querySelectorAll("#calcForm input[name]").forEach(input => {
-        projectInfo[input.name] = input.value;
-    });
+    // DOM refs
+    const alertBox = document.getElementById('alertBox');
+    const resultsArea = document.getElementById('resultsArea');
+    const rawJson = document.getElementById('rawJson');
+    const canvas = document.getElementById('distCanvas');
+    const ctx = canvas.getContext('2d');
 
-    const payload = {
-        place: document.getElementById("place").value,
-        sides: [
-            parseFloat(document.getElementById("sideA").value),
-            parseFloat(document.getElementById("sideB").value),
-            parseFloat(document.getElementById("sideC").value),
-            parseFloat(document.getElementById("sideD").value)
-        ],
-        height: parseFloat(document.getElementById("height").value),
-        project_info: projectInfo
-    };
-
-    const res = await fetch(`${apiBase}/calculate`, {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(payload)
-    });
-    const data = await res.json();
-
-    const tbody = document.querySelector("#resultsTable tbody");
-    tbody.innerHTML = "";
-
-    if (data.results) {
-        data.results.forEach(row => {
-            const tr = document.createElement("tr");
-            Object.values(row).forEach(val => {
-                const td = document.createElement("td");
-                td.textContent = val;
-                tr.appendChild(td);
-            });
-            tbody.appendChild(tr);
-        });
+    function showAlert(msg, type='danger', timeout=5000) {
+      alertBox.innerHTML = `
+        <div class="alert alert-${type} alert-sm" role="alert">
+          ${msg}
+        </div>`;
+      if (timeout) setTimeout(()=> alertBox.innerHTML = '', timeout);
     }
-});
 
-document.getElementById("downloadPdf").addEventListener("click", async () => {
-    const projectInfo = {};
-    document.querySelectorAll("#calcForm input[name]").forEach(input => {
-        projectInfo[input.name] = input.value;
-    });
+    function getFormData() {
+      const project_info = {
+        "Project Name": document.getElementById('projectName').value || '',
+        "Client Name": document.getElementById('clientName').value || '',
+        "Client Number": document.getElementById('clientNumber').value || '',
+        "Company Name": document.getElementById('companyName').value || ''
+      };
+      const sides = [
+        parseFloat(document.getElementById('sideA').value || 0),
+        parseFloat(document.getElementById('sideB').value || 0),
+        parseFloat(document.getElementById('sideC').value || 0),
+        parseFloat(document.getElementById('sideD').value || 0)
+      ];
+      const place = document.getElementById('place').value;
+      const height = parseFloat(document.getElementById('height').value || 0);
+      return { project_info, sides, place, height };
+    }
 
-    const payload = {
-        place: document.getElementById("place").value,
-        sides: [
-            parseFloat(document.getElementById("sideA").value),
-            parseFloat(document.getElementById("sideB").value),
-            parseFloat(document.getElementById("sideC").value),
-            parseFloat(document.getElementById("sideD").value)
-        ],
-        height: parseFloat(document.getElementById("height").value),
-        project_info: projectInfo
-    };
+    async function calculate() {
+      const { project_info, sides, place, height } = getFormData();
 
-    const res = await fetch(`${apiBase}/pdf`, {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(payload)
-    });
+      if (!sides.every(s => s > 0) || !height) {
+        showAlert('Please fill valid sides and height.', 'warning');
+        return;
+      }
 
-    const blob = await res.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "report.pdf";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-});
-</script>
+      const payload = { place, sides, height, project_info };
 
+      try {
+        setBusy(true, 'Calculating...');
+        const res = await fetch(API_BASE + '/calculate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Server error');
+
+        renderResults(data);
+        rawJson.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        showAlert('Calculation failed: ' + err.message, 'danger', 8000);
+        console.error(err);
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    function renderResults(data) {
+      const results = data.results || [];
+      if (!results.length) {
+        resultsArea.innerHTML = '<p class="text-warning">No viable options returned.</p>';
+        clearCanvas();
+        return;
+      }
+
+      // Build table
+      let html = `<div class="table-responsive"><table class="table table-sm table-bordered">
+        <thead class="table-light"><tr>`;
+      // header from keys of first result
+      const keys = Object.keys(results[0]);
+      keys.forEach(k => html += `<th>${k}</th>`);
+      html += `</tr></thead><tbody>`;
+      results.forEach((r, idx) => {
+        html += '<tr>';
+        keys.forEach(k => html += `<td>${r[k]}</td>`);
+        html += `</tr>`;
+      });
+      html += '</tbody></table></div>';
+
+      resultsArea.innerHTML = html;
+
+      // Draw distribution using first result
+      try {
+        const first = results[0];
+        const fixtures = Number(first['Fixtures']) || 0;
+        const spacingX = Number(first['Spacing X (m)']) || 1;
+        const spacingY = Number(first['Spacing Y (m)']) || 1;
+        const length = Number(data.length) || Math.max(...getFormData().sides);
+        const width = Number(data.width) || Math.max(...getFormData().sides);
+        drawDistribution(length, width, fixtures, spacingX, spacingY);
+      } catch (err) {
+        console.warn('Could not draw distribution:', err);
+        clearCanvas();
+      }
+    }
+
+    function clearCanvas() {
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.font = '14px sans-serif';
+      ctx.fillStyle = '#666';
+      ctx.fillText('No distribution to display', 18, 30);
+    }
+
+    function drawDistribution(lengthM, widthM, fixtures, spacingX, spacingY) {
+      // map room size to canvas
+      // keep margins
+      const margin = 30;
+      const cw = canvas.width - margin*2;
+      const ch = canvas.height - margin*2;
+
+      // scale factors
+      const scaleX = cw / lengthM;
+      const scaleY = ch / widthM;
+
+      // clear
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      // background
+      ctx.fillStyle = '#f8f9fa';
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+
+      // draw room boundary
+      ctx.strokeStyle = '#333';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(margin, margin, cw, ch);
+
+      // attempt to place fixtures in grid by trying to make rows/cols near sqrt(fixtures)
+      let cols = Math.round(Math.sqrt(fixtures)) || 1;
+      let rows = Math.ceil(fixtures / cols);
+      // if spacing is provided, attempt to override grid counts
+      if (spacingX > 0 && spacingY > 0) {
+        const approxCols = Math.max(1, Math.round((lengthM / spacingX)));
+        const approxRows = Math.max(1, Math.round((widthM / spacingY)));
+        // choose feasible closest pair that covers fixture count
+        if (approxCols * approxRows >= fixtures) {
+          cols = approxCols;
+          rows = approxRows;
+        }
+      }
+
+      // draw fixtures as circles
+      const cellW = cw / cols;
+      const cellH = ch / rows;
+      const fixtureR = Math.min(cellW, cellH) * 0.18;
+
+      let placed = 0;
+      for (let r=0; r<rows && placed < fixtures; r++) {
+        for (let c=0; c<cols && placed < fixtures; c++) {
+          const cx = margin + (c + 0.5) * cellW;
+          const cy = margin + (r + 0.5) * cellH;
+
+          // draw glow
+          const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, fixtureR*4);
+          grad.addColorStop(0, 'rgba(255,200,0,0.9)');
+          grad.addColorStop(0.4, 'rgba(255,200,0,0.35)');
+          grad.addColorStop(1, 'rgba(255,200,0,0.01)');
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.arc(cx, cy, fixtureR*3.5, 0, Math.PI*2);
+          ctx.fill();
+
+          // fixture body
+          ctx.fillStyle = '#ffb84d';
+          ctx.beginPath();
+          ctx.arc(cx, cy, fixtureR, 0, Math.PI*2);
+          ctx.fill();
+
+          // small center
+          ctx.fillStyle = '#fff';
+          ctx.beginPath();
+          ctx.arc(cx, cy, fixtureR*0.35, 0, Math.PI*2);
+          ctx.fill();
+
+          placed++;
+        }
+      }
+
+      // labels
+      ctx.fillStyle = '#333';
+      ctx.font = '13px sans-serif';
+      ctx.fillText(`Room: ${lengthM} x ${widthM} m`, margin, canvas.height - 10);
+      ctx.fillText(`Fixtures: ${fixtures}  Grid: ${cols} x ${rows}`, canvas.width - 220, canvas.height - 10);
+    }
+
+    async function downloadPdf() {
+      const { project_info, sides, place, height } = getFormData();
+      const payload = { project_info, sides, place, height };
+
+      try {
+        setBusy(true, 'Generating PDF...');
+        const res = await fetch(API_BASE + '/pdf', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+          const errJson = await res.json().catch(()=>({message:'unknown'}));
+          throw new Error(errJson.message || 'Failed to get PDF');
+        }
+
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'lighting_report.pdf';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+      } catch (err) {
+        showAlert('PDF download failed: ' + err.message, 'danger', 8000);
+        console.error(err);
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    function exportCsvFromResults() {
+      // read the displayed rawJson to build CSV
+      try {
+        const raw = JSON.parse(rawJson.textContent || '{}');
+        const results = raw.results || [];
+        if (!results.length) {
+          showAlert('No results to export', 'warning');
+          return;
+        }
+
+        const keys = Object.keys(results[0]);
+        const rows = [keys.join(',')];
+        results.forEach(r => {
+          const vals = keys.map(k => {
+            const v = r[k] === undefined || r[k] === null ? '' : String(r[k]).replace(/"/g, '""');
+            // quote if contains comma
+            return (/,|\n|"/).test(v) ? `"${v}"` : v;
+          });
+          rows.push(vals.join(','));
+        });
+        const csv = rows.join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = (document.getElementById('projectName').value || 'lighting_results') + '.csv';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        showAlert('CSV export failed: ' + err.message, 'danger', 8000);
+      }
+    }
+
+    function setBusy(flag, message) {
+      const btnCalc = document.getElementById('btnCalculate');
+      const btnPdf = document.getElementById('btnDownloadPdf');
+      const btnCsv = document.getElementById('btnExportCsv');
+      if (flag) {
+        btnCalc.disabled = true;
+        btnPdf.disabled = true;
+        btnCsv.disabled = true;
+        if (message) showAlert(message, 'info', 0);
+      } else {
+        btnCalc.disabled = false;
+        btnPdf.disabled = false;
+        btnCsv.disabled = false;
+      }
+    }
+
+    // attach events
+    document.getElementById('btnCalculate').addEventListener('click', calculate);
+    document.getElementById('btnDownloadPdf').addEventListener('click', downloadPdf);
+    document.getElementById('btnExportCsv').addEventListener('click', exportCsvFromResults);
+
+    // init
+    clearCanvas();
+    rawJson.textContent = "{}";
+  </script>
 </body>
 </html>
