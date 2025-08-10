@@ -1,0 +1,27 @@
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+
+app = Flask(__name__)
+# Allow all origins — you can restrict this later to your domain
+CORS(app, resources={r"/*": {"origins": "*"}})
+
+@app.route('/')
+def home():
+    return "Lighting Calculator API is running."
+
+@app.route('/calculate', methods=['POST'])
+def calculate():
+    try:
+        data = request.get_json()
+        # Example: Just echo back the received data + fake result
+        result = {
+            "received": data,
+            "calculation": "success",
+            "lux": 450  # Placeholder example
+        }
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+if __name__ == "__main__":
+    app.run(debug=True)

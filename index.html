@@ -232,31 +232,48 @@
         }
     }
 
-        async function getResults() {
-          const data = {
-            place: document.getElementById("place").value,
-            sides: [
-              parseFloat(document.getElementById("a").value),
-              parseFloat(document.getElementById("b").value),
-              parseFloat(document.getElementById("c").value),
-              parseFloat(document.getElementById("d").value),
-            ],
-            height: parseFloat(document.getElementById("height").value),
-          };
-    
-          const res = await fetch("https://abubakr3800.pythonanywhere.com/api/calculate", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(data),
-          });
-    
-          const json = await res.json();
-          document.cookie = `results=${JSON.stringify(json.results)}`;
-          //   document.getElementById("output").textContent = JSON.stringify(json.results, null, 2);
-        //   window.location.href = "results.html";
-        return json.results;
-        }
-      </script>
+    async function getResults() {
+  const data = {
+    place: document.getElementById("place").value,
+    sides: [
+      parseFloat(document.getElementById("a").value),
+      parseFloat(document.getElementById("b").value),
+      parseFloat(document.getElementById("c").value),
+      parseFloat(document.getElementById("d").value),
+    ],
+    height: parseFloat(document.getElementById("height").value),
+    project_info: {
+      project_name: document.querySelector('[for="project-name"] + input').value,
+      name: document.querySelector('[for="client-name"] + input').value,
+      company: document.querySelector('[for="company"] + input').value,
+      phone: document.querySelector('[for="phone"] + input').value,
+      email: document.getElementById("email").value
+    }
+  };
+
+  console.log("Sending to API:", data);
+
+  const res = await fetch("https://mahamonir.pythonanywhere.com/calculate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    console.error("API error:", errText);
+    throw new Error(`API returned ${res.status}`);
+  }
+
+  const json = await res.json();
+  if (!json.results) throw new Error("No results field in API response");
+
+  document.cookie = `results=${JSON.stringify(json.results)}`;
+  return json.results;
+}
+
+
+    </script>
 
 </body>
 </html>

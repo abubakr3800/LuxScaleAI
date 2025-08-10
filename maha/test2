@@ -1,0 +1,78 @@
+from flask import Flask, request, jsonify, send_file
+import io
+from fpdf import FPDF
+import json
+import os
+import numpy as np
+import matplotlib.pyplot as plt
+import tempfile
+# from flask import Flask, request, jsonify
+from flask_cors import CORS
+
+app = Flask(__name__)
+# Enable CORS for all domains and routes
+CORS(app, resources={r"/*": {"origins": "*"}})
+
+@app.route("/")
+def index():
+    return "Lighting Calculator API is running!"
+
+@app.route("/calculate", methods=["POST"])
+def calculate():
+    try:
+        data = request.get_json()
+        # Example: extracting input values
+        cct = float(data.get("cct", 0))
+        cri = float(data.get("cri", 0))
+        flicker = float(data.get("flicker", 0))
+
+        # Perform your calculation (replace with real logic)
+        glare = (cct / 1000) + (cri / 10) - (flicker / 100)
+
+        result = {
+            "CCT": cct,
+            "CRI": cri,
+            "Flicker": flicker,
+            "GlareResult": glare,
+            "status": "success"
+        }
+        return jsonify(result), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
+# if __name__ == "__main__":
+#     app.run(debug=True)
+
+
+@app.route("/pdf", methods=["POST"])
+def api_pdf():
+    data = request.get_json()
+
+    place = data["place"]
+    sides = data["sides"]
+    height = float(data["height"])
+    project_info = data["project_info"]
+
+    results, length, width = calculate_lighting(place, sides, height)
+
+    pdf = FPDF(format='A4')
+    pdf.add_page()
+    pdf.set_font("Arial", size=16)
+    pdf.cell(200, 10, "Lighting Design Report", ln=True)
+    for k, v in project_info.items():
+        pdf.cell(200, 10, f"{k}: {v}", ln=True)
+
+    for res in results:
+        pdf.add_page()
+        for key, val in res.items():
+            pdf.cell(0, 10, f"{key}: {val}", ln=True)
+
+    pdf_bytes = io.BytesIO(pdf.output(dest='S').encode('latin1'))
+    pdf_bytes.seek(0)
+    return send_file(pdf_bytes, download_name="report.pdf", as_attachment=True)
+
+
+if __name__ == "__main__":
+    app.run(debug=True)

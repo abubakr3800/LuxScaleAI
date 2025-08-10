@@ -80,6 +80,7 @@
               <button type="button" id="btnDownloadPdf" class="btn btn-outline-primary">Download PDF</button>
               <button type="button" id="btnExportCsv" class="btn btn-outline-success">Export CSV</button>
               <button type="reset" id="btnReset" class="btn btn-secondary ms-auto">Reset</button>
+              <button type="button" id="btn3DView" class="btn btn-info">View 3D Model</button>
             </div>
             <div class="col-12 mt-2">
               <div id="alertBox"></div>
@@ -173,7 +174,7 @@
         if (!res.ok) throw new Error(data.message || 'Server error');
 
         renderResults(data);
-        rawJson.innerHTML = analyzeResults(data);
+        rawJson.textContent = JSON.stringify(data, null, 2);
       } catch (err) {
         showAlert('Calculation failed: ' + err.message, 'danger', 8000);
         console.error(err);
@@ -231,84 +232,107 @@
     }
 
     function drawDistribution(lengthM, widthM, fixtures, spacingX, spacingY) {
-      // map room size to canvas
-      // keep margins
-      const margin = 30;
-      const cw = canvas.width - margin*2;
-      const ch = canvas.height - margin*2;
+  const margin = 30;
+  const cw = canvas.width - margin * 2;
+  const ch = canvas.height - margin * 2;
 
-      // scale factors
-      const scaleX = cw / lengthM;
-      const scaleY = ch / widthM;
+  // scale factors (مش مستخدم هنا حالياً لكن ممكن تظبط لاحقاً)
+  // const scaleX = cw / lengthM;
+  // const scaleY = ch / widthM;
 
-      // clear
-      ctx.clearRect(0,0,canvas.width,canvas.height);
-      // background
-      ctx.fillStyle = '#f8f9fa';
-      ctx.fillRect(0,0,canvas.width,canvas.height);
+  // امسح الكانفاس
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // draw room boundary
-      ctx.strokeStyle = '#333';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(margin, margin, cw, ch);
+  // خلفية الغرفة
+  ctx.fillStyle = '#f8f9fa';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // attempt to place fixtures in grid by trying to make rows/cols near sqrt(fixtures)
-      let cols = Math.round(Math.sqrt(fixtures)) || 1;
-      let rows = Math.ceil(fixtures / cols);
-      // if spacing is provided, attempt to override grid counts
-      if (spacingX > 0 && spacingY > 0) {
-        const approxCols = Math.max(1, Math.round((lengthM / spacingX)));
-        const approxRows = Math.max(1, Math.round((widthM / spacingY)));
-        // choose feasible closest pair that covers fixture count
-        if (approxCols * approxRows >= fixtures) {
-          cols = approxCols;
-          rows = approxRows;
-        }
-      }
+  // جدران مع سمك وظل 3D
+  const wallThickness = 15;
 
-      // draw fixtures as circles
-      const cellW = cw / cols;
-      const cellH = ch / rows;
-      const fixtureR = Math.min(cellW, cellH) * 0.18;
+  // ظل الجدران
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+  ctx.shadowBlur = 8;
+  ctx.shadowOffsetX = 4;
+  ctx.shadowOffsetY = 4;
 
-      let placed = 0;
-      for (let r=0; r<rows && placed < fixtures; r++) {
-        for (let c=0; c<cols && placed < fixtures; c++) {
-          const cx = margin + (c + 0.5) * cellW;
-          const cy = margin + (r + 0.5) * cellH;
+  // ارسم الجدران (أربعة جوانب)
+  ctx.fillStyle = '#999';
+  // جدار اليسار
+  ctx.fillRect(margin - wallThickness, margin - wallThickness, wallThickness, ch + wallThickness);
+  // جدار الأعلى
+  ctx.fillRect(margin - wallThickness, margin - wallThickness, cw + wallThickness, wallThickness);
+  // جدار اليمين
+  ctx.fillRect(margin + cw, margin - wallThickness, wallThickness, ch + wallThickness);
+  // جدار الأسفل
+  ctx.fillRect(margin - wallThickness, margin + ch, cw + wallThickness, wallThickness);
 
-          // draw glow
-          const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, fixtureR*4);
-          grad.addColorStop(0, 'rgba(255,200,0,0.9)');
-          grad.addColorStop(0.4, 'rgba(255,200,0,0.35)');
-          grad.addColorStop(1, 'rgba(255,200,0,0.01)');
-          ctx.fillStyle = grad;
-          ctx.beginPath();
-          ctx.arc(cx, cy, fixtureR*3.5, 0, Math.PI*2);
-          ctx.fill();
+  // أوقف الظل عشان ما يأثرش على باقي الرسم
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
+  ctx.shadowOffsetX = 0;
+  ctx.shadowOffsetY = 0;
 
-          // fixture body
-          ctx.fillStyle = '#ffb84d';
-          ctx.beginPath();
-          ctx.arc(cx, cy, fixtureR, 0, Math.PI*2);
-          ctx.fill();
+  // ارسم حد الغرفة (floor)
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(margin, margin, cw, ch);
 
-          // small center
-          ctx.fillStyle = '#fff';
-          ctx.beginPath();
-          ctx.arc(cx, cy, fixtureR*0.35, 0, Math.PI*2);
-          ctx.fill();
+  // تحديد عدد الأعمدة والصفوف حسب عدد الكشافات
+  let cols = Math.round(Math.sqrt(fixtures)) || 1;
+  let rows = Math.ceil(fixtures / cols);
 
-          placed++;
-        }
-      }
-
-      // labels
-      ctx.fillStyle = '#333';
-      ctx.font = '13px sans-serif';
-      ctx.fillText(`Room: ${lengthM} x ${widthM} m`, margin, canvas.height - 10);
-      ctx.fillText(`Fixtures: ${fixtures}  Grid: ${cols} x ${rows}`, canvas.width - 220, canvas.height - 10);
+  if (spacingX > 0 && spacingY > 0) {
+    const approxCols = Math.max(1, Math.round(lengthM / spacingX));
+    const approxRows = Math.max(1, Math.round(widthM / spacingY));
+    if (approxCols * approxRows >= fixtures) {
+      cols = approxCols;
+      rows = approxRows;
     }
+  }
+
+  const cellW = cw / cols;
+  const cellH = ch / rows;
+  const fixtureR = Math.min(cellW, cellH) * 0.18;
+
+  let placed = 0;
+  for (let r = 0; r < rows && placed < fixtures; r++) {
+    for (let c = 0; c < cols && placed < fixtures; c++) {
+      const cx = margin + (c + 0.5) * cellW;
+      const cy = margin + (r + 0.5) * cellH;
+
+      // توهج الكشاف
+      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, fixtureR * 5);
+      grad.addColorStop(0, 'rgba(255, 255, 150, 0.9)');
+      grad.addColorStop(0.3, 'rgba(255, 255, 150, 0.4)');
+      grad.addColorStop(1, 'rgba(255, 255, 150, 0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(cx, cy, fixtureR * 4.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // جسم الكشاف
+      ctx.fillStyle = '#ffcc33';
+      ctx.beginPath();
+      ctx.arc(cx, cy, fixtureR, 0, Math.PI * 2);
+      ctx.fill();
+
+      // مركز الكشاف
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(cx, cy, fixtureR * 0.35, 0, Math.PI * 2);
+      ctx.fill();
+
+      placed++;
+    }
+  }
+
+  // النص
+  ctx.fillStyle = '#333';
+  ctx.font = '13px sans-serif';
+  ctx.fillText(`Room: ${lengthM} x ${widthM} m`, margin, canvas.height - 10);
+  ctx.fillText(`Fixtures: ${fixtures}  Grid: ${cols} x ${rows}`, canvas.width - 220, canvas.height - 10);
+}
 
     async function downloadPdf() {
       const { project_info, sides, place, height } = getFormData();
@@ -400,91 +424,38 @@
     document.getElementById('btnDownloadPdf').addEventListener('click', downloadPdf);
     document.getElementById('btnExportCsv').addEventListener('click', exportCsvFromResults);
 
+    // New: 3D View button handler
+    document.getElementById('btn3DView').addEventListener('click', () => {
+      try {
+        const raw = JSON.parse(rawJson.textContent || '{}');
+        const results = raw.results || [];
+
+        if (results.length === 0) {
+          showAlert('No results available to visualize. Please calculate first.', 'warning');
+          return;
+        }
+
+        const firstResult = results[0];
+        const modelData = {
+          fixtures: Number(firstResult['Fixtures']) || 0,
+          spacingX: Number(firstResult['Spacing X (m)']) || 1,
+          spacingY: Number(firstResult['Spacing Y (m)']) || 1,
+          roomLength: Number(raw.length) || Math.max(...getFormData().sides),
+          roomWidth: Number(raw.width) || Math.max(...getFormData().sides)
+        };
+
+        localStorage.setItem('lightingModelData', JSON.stringify(modelData));
+
+        window.open('3d_view.html', '_blank');
+      } catch (err) {
+        showAlert('Failed to prepare 3D view: ' + err.message, 'danger');
+        console.error(err);
+      }
+    });
+
     // init
     clearCanvas();
     rawJson.textContent = "{}";
-
-
-    function analyzeResults(data) {
-      const results = data.results || [];
-      if (!results.length) {
-        return '<p>No results available for analysis.</p>';
-      }
-
-      // Define factors to analyze and how to find the "best"
-      // For demo: lower 'Power (W)' is better, higher 'Spacing X (m)' is better, fewer 'Fixtures' is better
-      // Adjust based on your real factor names and logic
-
-      const factors = [
-        { key: 'Power (W)', best: 'min' },
-        { key: 'Spacing X (m)', best: 'max' },
-        { key: 'Spacing Y (m)', best: 'max' },
-        { key: 'Fixtures', best: 'min' }
-      ];
-
-      // Find best values per factor
-      let bestPerFactor = {};
-      factors.forEach(({key, best}) => {
-        let bestValue = null;
-        results.forEach(r => {
-          const val = parseFloat(r[key]);
-          if (isNaN(val)) return;
-          if (bestValue === null) bestValue = val;
-          else if (best === 'min' && val < bestValue) bestValue = val;
-          else if (best === 'max' && val > bestValue) bestValue = val;
-        });
-        bestPerFactor[key] = bestValue;
-      });
-
-      // Find which solutions match best values per factor
-      let scoreByIndex = new Array(results.length).fill(0);
-      factors.forEach(({key, best}) => {
-        const bestValue = bestPerFactor[key];
-        results.forEach((r, i) => {
-          const val = parseFloat(r[key]);
-          if (val === bestValue) {
-            scoreByIndex[i]++;
-          }
-        });
-      });
-
-      // Find overall best by max score
-      const maxScore = Math.max(...scoreByIndex);
-      const bestIndexes = [];
-      scoreByIndex.forEach((score, idx) => {
-        if (score === maxScore) bestIndexes.push(idx);
-      });
-
-      // Build analysis HTML
-      let html = '<h6>Analysis Summary</h6><ul>';
-      factors.forEach(({key, best}) => {
-        html += `<li>Best ${key} (${best === 'min' ? 'lowest' : 'highest'}): <strong>${bestPerFactor[key]}</strong></li>`;
-      });
-      html += '</ul>';
-
-      if (bestIndexes.length === 1) {
-        html += `<p><strong>Overall Best Solution:</strong> Option #${bestIndexes[0] + 1} with score ${maxScore} (best in most factors)</p>`;
-      } else {
-        html += `<p><strong>Overall Best Solutions (tie):</strong> Options ${bestIndexes.map(i => '#' + (i+1)).join(', ')} with score ${maxScore}</p>`;
-      }
-
-      // Show the data row(s) of the overall best solution(s)
-      html += '<h6>Best Solution Details</h6><div class="table-responsive"><table class="table table-sm table-bordered"><thead><tr>';
-      const keys = Object.keys(results[0]);
-      keys.forEach(k => { html += `<th>${k}</th>`; });
-      html += '</tr></thead><tbody>';
-      bestIndexes.forEach(i => {
-        html += '<tr>';
-        keys.forEach(k => {
-          html += `<td>${results[i][k]}</td>`;
-        });
-        html += '</tr>';
-      });
-      html += '</tbody></table></div>';
-
-      return html;
-    }
-
   </script>
 </body>
 </html>
