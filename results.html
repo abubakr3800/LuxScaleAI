@@ -26,151 +26,187 @@
     <script src="https://cdn.jsdelivr.net/npm/pdf-lib/dist/pdf-lib.min.js"></script>
 
 
-  <script>
-    function generateCSV(results) {
-      const headers = Object.keys(results[0]);
-      const csvRows = [];
+<script>
+const API_URL = "http://localhost/sc-luxscaleai/api/get.php"; // ✅ CHANGE THIS
+const backgroundImageUrl = "assets/pdfBG.png"; // ✅ CHANGE IF NEEDED
 
-      // Add headers row
-      csvRows.push(headers.join(","));
+let results = [];
 
-      // Add data rows
-      results.forEach(obj => {
-        const row = headers.map(header => `"${obj[header]}"`);
-        csvRows.push(row.join(","));
-      });
+// Helper to get token from ?token=xxx
+function getToken() {
+  const urlParams = new URLSearchParams(window.location.search);
+  return urlParams.get("token");
+}
 
-      return csvRows.join("\n");
-    }
+function generateCSV(data) {
+  const headers = Object.keys(data[0]);
+  const csv = [headers.join(",")];
+  data.forEach(row => {
+    csv.push(headers.map(h => `"${row[h]}"`).join(","));
+  });
+  return csv.join("\n");
+}
 
-    function downloadCSV(data, filename = "results.csv") {
-      const blob = new Blob([data], { type: "text/csv;charset=utf-8;" });
-      const link = document.createElement("a");
-      link.setAttribute("href", URL.createObjectURL(blob));
-      link.setAttribute("download", filename);
-      link.style.display = "none";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
+function generateCSV(data) {
+  const headers = [
+    "Luminaire", "Power (W)", "Efficacy (lm/W)", "Fixtures",
+    "Spacing X (m)", "Spacing Y (m)", "Average Lux", "Uniformity", "Total Power (W)"
+  ];
+  const keys = [
+    "luminaire", "power", "efficacy", "fixtures",
+    "spacing_x", "spacing_y", "avg_lux", "uniformity", "total_power"
+  ];
+  const csv = [headers.join(",")];
+  data.forEach(row => {
+    csv.push(keys.map(k => `"${row[k]}"`).join(","));
+  });
+  return csv.join("\n");
+}
+function downloadCSV(csv) {
+  const blob = new Blob([csv], { type: "text/csv" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  const resDate = new Date();
+  link.download = `lighting_results_${resDate.toISOString().split('T')[0]}.csv`;
+  link.click();
+}
 
-    if (document.cookie.includes("results")) {
-      const results = JSON.parse(document.cookie.split("=")[1].split(";")[0]);
-      const container = document.getElementById("resultsContainer");
+function displayResults(results) {
+  const container = document.getElementById("resultsContainer");
+  container.innerHTML = "";
+  let counter = 1;
+  results.forEach(result => {
+    const card = document.createElement("div");
+    card.className = "col-md-4 col-12";
+    card.innerHTML = `
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <h5 class="card-title">Option ${counter++}</h5>
+          <ul class="list-group list-group-flush">
+            <li class="list-group-item"><strong>Luminaire:</strong> ${result.luminaire}</li>
+            <li class="list-group-item"><strong>Power (W):</strong> ${result.power}</li>
+            <li class="list-group-item"><strong>Efficacy (lm/W):</strong> ${result.efficacy}</li>
+            <li class="list-group-item"><strong>Fixtures:</strong> ${result.fixtures}</li>
+            <li class="list-group-item"><strong>Spacing X (m):</strong> ${result.spacing_x}</li>
+            <li class="list-group-item"><strong>Spacing Y (m):</strong> ${result.spacing_y}</li>
+            <li class="list-group-item"><strong>Average Lux:</strong> ${result.avg_lux}</li>
+            <li class="list-group-item"><strong>Uniformity:</strong> ${result.uniformity}</li>
+            <li class="list-group-item"><strong>Total Power (W):</strong> ${result.total_power}</li>
+          </ul>
+        </div>
+      </div>
+    `;
+    container.appendChild(card);
+  });
+}
 
-      let counter = 1;
+async function generatePDF(results) {
+  const { PDFDocument, rgb, StandardFonts } = PDFLib;
+  const pdfDoc = await PDFDocument.create();
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
-      results.forEach(result => {
-        const card = document.createElement("div");
-        card.className = "col-md-4 col-12";
+  const bgImageBytes = await fetch(backgroundImageUrl).then(res => res.arrayBuffer());
+  const bgImage = await pdfDoc.embedPng(bgImageBytes);
 
-        card.innerHTML = `
-          <div class="card shadow-sm h-100">
-            <div class="card-body">
-              <h5 class="card-title">Option ${counter++}</h5>
-              <ul class="list-group list-group-flush">
-                <li class="list-group-item"><strong>Luminaire:</strong> ${result["Luminaire"]}</li>
-                <li class="list-group-item"><strong>Power (W):</strong> ${result["Power (W)"]}</li>
-                <li class="list-group-item"><strong>Efficacy (lm/W):</strong> ${result["Efficacy (lm/W)"]}</li>
-                <li class="list-group-item"><strong>Fixtures:</strong> ${result["Fixtures"]}</li>
-                <li class="list-group-item"><strong>Spacing X (m):</strong> ${result["Spacing X (m)"]}</li>
-                <li class="list-group-item"><strong>Spacing Y (m):</strong> ${result["Spacing Y (m)"]}</li>
-                <li class="list-group-item"><strong>Average Lux:</strong> ${result["Average Lux"]}</li>
-                <li class="list-group-item"><strong>Uniformity:</strong> ${result["Uniformity"]}</li>
-                <li class="list-group-item"><strong>Total Power (W):</strong> ${result["Total Power (W)"]}</li>
-              </ul>
-            </div>
-          </div>
-        `;
-        container.appendChild(card);
-      });
-
-      document.getElementById("downloadBtn").addEventListener("click", () => {
-        let csv = generateCSV(results);
-
-        downloadCSV(csv);
-      });
-
-    } else {
-      window.location.href = "index.html";
-    }
-  </script>
-
-    <script>
-    const backgroundImageUrl = "assets/pdfBG.png"; // Replace with your actual image path
-
-    async function generatePDF(results) {
-        const { PDFDocument, rgb, StandardFonts } = PDFLib;
-        const pdfDoc = await PDFDocument.create();
-        const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-
-        // Load background PNG
-        const bgImageBytes = await fetch(backgroundImageUrl).then(res => res.arrayBuffer());
-        const bgImage = await pdfDoc.embedPng(bgImageBytes);
-
-        for (let i = 0; i < results.length; i++) {
-        const result = results[i];
-        const page = pdfDoc.addPage([595.28, 841.89]); // A4 size
-
-        // Draw background
-        page.drawImage(bgImage, {
-            x: 0,
-            y: 0,
-            width: page.getWidth(),
-            height: page.getHeight(),
-        });
-
-        // Text rendering
-        const marginX = 70;
-        let y = page.getHeight() - 100;
-
-        page.drawText(`Option ${i + 1}`, {
-            x: marginX,
-            y: y,
-            size: 20,
-            font: font,
-            color: rgb(0.1, 0.1, 0.6),
-        });
-
-        y -= 30;
-
-        const fields = [
-            "Luminaire", "Power (W)", "Efficacy (lm/W)", "Fixtures",
-            "Spacing X (m)", "Spacing Y (m)", "Average Lux",
-            "Uniformity", "Total Power (W)"
-        ];
-
-        fields.forEach(field => {
-            page.drawText(`${field}: ${result[field]}`, {
-            x: marginX,
-            y: y,
-            size: 14,
-            font: font,
-            color: rgb(0, 0, 0),
-            });
-            y -= 22;
-        });
-        }
-
-        const pdfBytes = await pdfDoc.save();
-        const blob = new Blob([pdfBytes], { type: "application/pdf" });
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        resDate = new Date();
-        link.style.display = "none";
-        document.body.appendChild(link);
-        link.setAttribute("download", `lighting_results_${resDate.toISOString().split('T')[0]}.pdf`);
-        link.href = URL.createObjectURL(blob);
-        link.click();
-    }
-
-    document.getElementById("pdfBtn").addEventListener("click", async () => {
-        if (document.cookie.includes("results")) {
-        const results = JSON.parse(document.cookie.split("=")[1].split(";")[0]);
-        await generatePDF(results);
-        }
+  for (let i = 0; i < results.length; i++) {
+    const result = results[i];
+    const page = pdfDoc.addPage([595.28, 841.89]); // A4
+    page.drawImage(bgImage, {
+      x: 0,
+      y: 0,
+      width: page.getWidth(),
+      height: page.getHeight(),
     });
-    </script>
+
+    const marginX = 70;
+    let y = page.getHeight() - 100;
+
+    page.drawText(`Option ${i + 1}`, {
+      x: marginX,
+      y: y,
+      size: 20,
+      font: font,
+      color: rgb(0.1, 0.1, 0.6),
+    });
+
+    y -= 30;
+    const fields = [
+        ["Luminaire", result.luminaire],
+        ["Power (W)", result.power],
+        ["Efficacy (lm/W)", result.efficacy],
+        ["Fixtures", result.fixtures],
+        ["Spacing X (m)", result.spacing_x],
+        ["Spacing Y (m)", result.spacing_y],
+        ["Average Lux", result.avg_lux],
+        ["Uniformity", result.uniformity],
+        ["Total Power (W)", result.total_power],
+    ];
+    fields.forEach(([label, value]) => {
+    page.drawText(`${label}: ${value}`, {
+        x: marginX,
+        y: y,
+        size: 14,
+        font: font,
+        color: rgb(0, 0, 0),
+    });
+    y -= 22;
+    });
+
+    // if (i < results.length - 1) {
+    //   pdfDoc.addPage([595.28, 841.89]); // Add a new page for the next result
+    // }
+  }
+
+  const pdfBytes = await pdfDoc.save();
+  const blob = new Blob([pdfBytes], { type: "application/pdf" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  const resDate = new Date();
+  link.download = `lighting_results_${resDate.toISOString().split('T')[0]}.pdf`;
+  link.click();
+}
+
+// Load results from API using token
+async function loadResults() {
+  const token = getToken();
+  console.log("Token:", token);
+  
+  if (token == null || token.trim() === "") {
+    alert("No token provided.");
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_URL}?token=${encodeURIComponent(token)}`);
+    const data = await response.json();
+    console.log("API Response:", data);
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to fetch results.");
+    }
+    if (data.request && data.results) {
+      results = data.results;
+      displayResults(results);
+    } else {
+      alert(data.message || "No results found.");
+    }
+  } catch (err) {
+    console.error("Fetch error:", err);
+    alert("Failed to load results.");
+  }
+}
+
+document.getElementById("downloadBtn").addEventListener("click", () => {
+  const csv = generateCSV(results);
+  downloadCSV(csv);
+});
+
+document.getElementById("pdfBtn").addEventListener("click", async () => {
+  await generatePDF(results);
+});
+
+loadResults();
+</script>
+
 
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>

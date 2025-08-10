@@ -66,34 +66,36 @@
                     <h3>Define the surface area</h3>
                     <p>Take a side measurement, then move clockwise. <span>(Measurements are in Meters)</span></p>
 
-                    <div class="inputs">
-                        <div class="sides">
-                            <div class="side">
-                                <label for="side-1">Side 1</label>
-                                <input type="number" id="a">
+                    <form action="">
+                        <div class="inputs">
+                            <div class="sides">
+                                <div class="side">
+                                    <label for="side-1">Side 1</label>
+                                    <input type="number" id="a">
+                                </div>
+    
+                                <div class="side">
+                                    <label for="side-2">Side 2</label>
+                                    <input type="number" id="b">
+                                </div>
+    
+                                <div class="side">
+                                    <label for="side-3">Side 3</label>
+                                    <input type="number" id="c">
+                                </div>
+    
+                                <div class="side">
+                                    <label for="side-4">Side 4</label>
+                                    <input type="number" id="d">
+                                </div>
                             </div>
-
+    
                             <div class="side">
-                                <label for="side-2">Side 2</label>
-                                <input type="number" id="b">
-                            </div>
-
-                            <div class="side">
-                                <label for="side-3">Side 3</label>
-                                <input type="number" id="c">
-                            </div>
-
-                            <div class="side">
-                                <label for="side-4">Side 4</label>
-                                <input type="number" id="d">
+                                <label for="height">Height</label>
+                                <input type="number" id="height">
                             </div>
                         </div>
-
-                        <div class="side">
-                            <label for="height">Height</label>
-                            <input type="number" id="height">
-                        </div>
-                    </div>
+                    </form>
                 </div>
 
                 <div class="area">
@@ -112,6 +114,7 @@
                 <button popovertarget="popup">
                     make lighting study with ai
                 </button>
+
             </div>
         </div>
 
@@ -124,31 +127,39 @@
                 <h3>Finalize your study</h3>
                 <p>Fill up the following fields and click PROCEED <span>* is required</span></p>
 
-                <div class="inputs-dark">
-                    <div class="sides">
-                        <div class="side">
-                            <label for="project-name">Project Name*</label>
-                            <input required type="tex">
-                        </div>
+                <form action="">
 
-                        <div class="side">
-                            <label for="client-name">Your Name*</label>
-                            <input required type="text">
-                        </div>
+                    <div class="inputs-dark">
+                        <div class="sides">
+                            <div class="side">
+                                <label for="project-name">Project Name*</label>
+                                <input required type="tex">
+                            </div>
+    
+                            <div class="side">
+                                <label for="client-name">Your Name*</label>
+                                <input required type="text">
+                            </div>
+    
+                            <div class="side">
+                                <label for="company">Your Company</label>
+                                <input type="text">
+                            </div>
+    
+                            <div class="side">
+                                <label for="phone">Phone Number*</label>
+                                <input required type="tel">
+                            </div>
 
-                        <div class="side">
-                            <label for="company">Your Company</label>
-                            <input type="text">
-                        </div>
-
-                        <div class="side">
-                            <label for="phone">Phone Number*</label>
-                            <input required type="tel">
+                            <div class="side">
+                                <label for="email">Email*</label>
+                                <input required type="email" id="email">
+                            </div>
                         </div>
                     </div>
-                </div>
+                </form>
 
-                <button class="solid" onclick="calculate()">
+                <button type="button" class="solid" onclick="calculate()">
                     proceed
                 </button>
     </div>
@@ -168,7 +179,60 @@
 
 
     <script>
-        async function calculate() {
+
+    async function calculate() {
+        let all_results = await getResults();
+        // document.cookie = `results=${JSON.stringify(all_results)}`;
+        results = all_results.map(result => ({
+            luminaire: result["Luminaire"],
+            power: result["Power (W)"],
+            efficacy: result["Efficacy (lm/W)"],
+            fixtures: result["Fixtures"],
+            spacing_x: result["Spacing X (m)"],
+            spacing_y: result["Spacing Y (m)"],
+            avg_lux: result["Average Lux"],
+            uniformity: result["Uniformity"],
+            total_power: result["Total Power (W)"]
+        }));
+        const data = {
+            project_name: document.querySelector('[for="project-name"] + input').value,
+            name: document.querySelector('[for="client-name"] + input').value,
+            company: document.querySelector('[for="company"] + input').value,
+            phone: document.querySelector('[for="phone"] + input').value,
+            email: document.getElementById("email").value,
+            place: document.getElementById("place").value,
+            sides: [
+                parseFloat(document.getElementById("a").value),
+                parseFloat(document.getElementById("b").value),
+                parseFloat(document.getElementById("c").value),
+                parseFloat(document.getElementById("d").value),
+            ],
+            height: parseFloat(document.getElementById("height").value),
+            results: results // Include the results from the calculation
+        };
+
+        console.log("Submitting data:", data);
+        // Send the data to the server
+
+        const res = await fetch("http://localhost/sc-luxscaleai/api/submit.php", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data),
+        });
+
+        const json = await res.json();
+
+        console.log("Response from server:", json);
+
+        if (json.token) {
+            localStorage.setItem("user_token", json.token);
+            window.location.href = `results.html?token=${json.token}`;
+        } else {
+            alert("Error: " + json.error);
+        }
+    }
+
+        async function getResults() {
           const data = {
             place: document.getElementById("place").value,
             sides: [
@@ -189,7 +253,8 @@
           const json = await res.json();
           document.cookie = `results=${JSON.stringify(json.results)}`;
           //   document.getElementById("output").textContent = JSON.stringify(json.results, null, 2);
-          window.location.href = "results.html";
+        //   window.location.href = "results.html";
+        return json.results;
         }
       </script>
 

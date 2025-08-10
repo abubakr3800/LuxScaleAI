@@ -48,7 +48,7 @@ body{
     background-color: var(--clr-neutral-300);
     font-family: var(--fm-p);
     font-size: var(--fs);
-    /* overflow: hidden; */
+    overflow-x: hidden;
 }
 
 #myVideo{
@@ -132,11 +132,6 @@ input{
     -webkit-backdrop-filter: blur(10px);
 }
 
-input:focus{
-    border: solid 1px var(--clr-accent);
-    outline: none;
-}
-
 input[type="number"] {
     -webkit-appearance: textfield;
        -moz-appearance: textfield;
@@ -146,7 +141,13 @@ input[type="number"] {
   input[type=number]::-webkit-outer-spin-button { 
     -webkit-appearance: none;
     -moz-appearance: none;
-  }
+    appearance: none;
+}
+
+input:focus{
+    border: solid 1px var(--clr-accent);
+    outline: none;
+}
 
 select{
     --opacity: 25%;
@@ -162,6 +163,7 @@ select{
 
     -webkit-appearance: none;
     -moz-appearance: none;
+    appearance: none;
     background-image: url("data:image/svg+xml;utf8,<svg fill='black' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/><path d='M0 0h24v24H0z' fill='none'/></svg>");
     background-repeat: no-repeat;
     background-position-x: 95%;
@@ -434,33 +436,111 @@ footer .header-wrap{
     background-color: var(--clr-accent);
 }
 
-@media (width < 50em) {
+/* Tablet styles */
+@media (width <= 768px) {
+    :root {
+        --fs: .9em;
+        --gap: .8rem;
+        --width: 85%;
+        --input-width: calc(50% - calc(var(--gap) * 0.5));
+    }
+
+    h1 {
+        --factor: 3.8;
+        text-align: center;
+    }
+
+    .subheading {
+        text-align: center;
+        font-size: calc(var(--fs) * 1.3);
+    }
+
+    .hero {
+        text-align: center;
+        margin-bottom: calc(var(--gap) * 3);
+    }
+
+    .form {
+        grid-template-columns: 1fr;
+        gap: calc(var(--gap) * 3);
+    }
+
+    .sides {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: var(--gap);
+    }
+
+    select {
+        width: 100%;
+    }
+
+    .popup:popover-open {
+        width: calc(var(--width) * 0.9);
+        padding: calc(var(--gap) * 4) calc(var(--gap) * 1.5);
+    }
+
+    .popup .sides {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+/* Mobile styles */
+@media (width <= 480px) {
     :root{
         --fs: .8em;
-    
         --gap: .7rem;
-    
         --flex-dir: column;
-
-        --width: 90%;
-
-        --input-width: 100%
+        --width: 95%;
+        --input-width: 100%;
     }
 
     body{
-        overflow: auto;
+        overflow-x: hidden;
+    }
+
+    #myVideo {
+        /* Hide video on very small screens for performance */
+        display: none;
+    }
+
+    .overlay {
+        background: hsl(var(--clr-neutral-800), .9);
     }
 
     h1{
-        --factor: 3.5;
+        --factor: 2.8;
+        text-align: center;
+        line-height: 1.1;
+    }
+
+    .subheading {
+        font-size: calc(var(--fs) * 1.1);
+        text-align: center;
+        max-width: 100%;
     }
 
     label{
         --factor: .95;
+        margin: calc(var(--gap) * .4) 0 calc(var(--gap) * .2) 0;
+    }
+
+    input, select {
+        padding: calc(var(--gap) * 0.8) calc(var(--gap) * 1);
+        font-size: calc(var(--fs) * 0.9);
     }
 
     button{
         --max-width: 100%;
+        padding: calc(var(--gap) * 1.2) calc(var(--gap) * 1.5);
+        font-size: calc(var(--fs) * 1.1);
+        margin-top: calc(var(--gap) * 2);
+    }
+
+    .header-wrap {
+        --factor-inline: 1;
+        --factor-block: 1;
+        padding: calc(var(--gap) * 1) calc(var(--gap) * 1.5);
     }
 
     header .contact{
@@ -468,7 +548,8 @@ footer .header-wrap{
     }
 
     header img{
-        --factor: 15;
+        --factor: 12;
+        max-width: 150px;
     }
 
     .header-wrap{
@@ -476,21 +557,119 @@ footer .header-wrap{
         align-items: center;
     }
 
+    .hero {
+        text-align: center;
+        margin-bottom: calc(var(--gap) * 2);
+    }
+
     .form{
         grid-template-columns: 1fr;
-        gap: calc(var(--gap) * 4);
+        gap: calc(var(--gap) * 3);
+    }
+
+    .sides {
+        display: flex;
+        flex-direction: column;
+        gap: calc(var(--gap) * 0.5);
     }
     
     select{
         width: 100%;
+        margin-top: calc(var(--gap) * 1.5);
+    }
+
+    .area {
+        margin-bottom: calc(var(--gap) * 2);
+    }
+
+    .area h3 {
+        margin-bottom: calc(var(--gap) * 1);
     }
 
     .popup:popover-open{
         width: calc(var(--width) * 1);
+        padding: calc(var(--gap) * 3) calc(var(--gap) * 1.5);
+        margin: calc(var(--gap) * 2);
     }
 
     .popup img{
-        width: 50%;
-        margin-bottom: calc(var(--gap) * 3);
+        width: 60%;
+        margin-bottom: calc(var(--gap) * 2);
+    }
+
+    .popup .sides {
+        display: flex;
+        flex-direction: column;
+        gap: calc(var(--gap) * 0.5);
+    }
+
+    .popup .side:nth-child(1), .popup .side:nth-child(2){
+        grid-column: unset;
+    }
+
+    .cridits {
+        --factor: 8;
+        padding: calc(var(--gap) * calc(var(--factor) * .08)) calc(var(--gap) * calc(var(--factor) * .15));
+    }
+
+    .cridits img {
+        max-width: 100%;
+        height: auto;
+    }
+
+    footer {
+        position: relative;
+        margin-top: calc(var(--gap) * 4);
+    }
+
+    footer .header-wrap {
+        padding: calc(var(--gap) * 1.5);
+    }
+
+    .copyrights p {
+        --factor: .7;
+        line-height: 1.4;
+    }
+}
+
+/* Large mobile landscape */
+@media (width <= 640px) and (orientation: landscape) {
+    h1 {
+        --factor: 2.5;
+    }
+
+    .hero {
+        margin-bottom: calc(var(--gap) * 1.5);
+    }
+
+    .form {
+        gap: calc(var(--gap) * 2);
+    }
+
+    .sides {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: var(--gap);
+    }
+}
+
+/* Extra small devices */
+@media (width <= 320px) {
+    :root {
+        --fs: .75em;
+        --gap: .6rem;
+    }
+
+    h1 {
+        --factor: 2.5;
+    }
+
+    .header-wrap {
+        padding: calc(var(--gap) * 0.8) calc(var(--gap) * 1);
+    }
+
+    .popup:popover-open {
+        margin: calc(var(--gap) * 1);
+        padding: calc(var(--gap) * 2) calc(var(--gap) * 1);
     }
 }
