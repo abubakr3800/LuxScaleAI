@@ -6,12 +6,14 @@
   <style>body { margin:0; overflow:hidden; }</style>
 </head>
 <body>
-<script src="https://cdn.jsdelivr.net/npm/three@0.124.0/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.124.0/examples/js/controls/OrbitControls.js"></script>
+<script src="js/three.min.js"></script>
+<script src="js/OrbitControls.js"></script>
 
 <script>
   // قراءة البيانات من localStorage
   const dataStr = localStorage.getItem('lightingModelData');
+  console.log(dataStr);
+  
   if (!dataStr) {
     alert('No lighting model data found in localStorage. Please calculate first.');
     throw new Error('No data');
@@ -43,12 +45,60 @@
 
   // دالة لإضافة fixtures (كشافات) كمكعبات صفراء
   function addFixture(x, y, z) {
-    const geometry = new THREE.BoxGeometry(1, 0.5, 1);
-    const material = new THREE.MeshStandardMaterial({ color: 0xffcc00 });
-    const fixture = new THREE.Mesh(geometry, material);
-    fixture.position.set(x, y, z);
-    scene.add(fixture);
-  }
+  const highBay = new THREE.Group();
+
+  // Top hook
+  const hook = new THREE.Mesh(
+    new THREE.TorusGeometry(0.15, 0.03, 8, 16, Math.PI),
+    new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.8, roughness: 0.3 })
+  );
+  hook.rotation.x = Math.PI / 2;
+  hook.position.y = 0.45;
+  highBay.add(hook);
+
+  // Short stem
+  const stem = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.05, 0.05, 0.3, 16),
+    new THREE.MeshStandardMaterial({ color: 0x999999, metalness: 0.7, roughness: 0.4 })
+  );
+  stem.position.y = 0.2;
+  highBay.add(stem);
+
+  // Dome housing (main body)
+  const dome = new THREE.Mesh(
+    new THREE.SphereGeometry(0.6, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2),
+    new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.6, roughness: 0.5 })
+  );
+  dome.position.y = -0.3;
+  highBay.add(dome);
+
+  // Lens at the bottom
+  const lens = new THREE.Mesh(
+    new THREE.CircleGeometry(0.55, 32),
+    new THREE.MeshStandardMaterial({ color: 0xffffdd, emissive: 0xffffaa, emissiveIntensity: 0.6 })
+  );
+  lens.rotation.x = -Math.PI / 2;
+  lens.position.y = -0.6;
+  highBay.add(lens);
+
+  // Light beam cone
+  const beamGeometry = new THREE.ConeGeometry(2, 3, 32, 1, true);
+  const beamMaterial = new THREE.MeshBasicMaterial({
+    color: 0xffffaa,
+    transparent: true,
+    opacity: 0.15,
+    side: THREE.DoubleSide
+  });
+  const beam = new THREE.Mesh(beamGeometry, beamMaterial);
+  beam.position.y = -2.1;
+  beam.rotation.x = Math.PI;
+  highBay.add(beam);
+
+  // Position the whole fixture
+  highBay.position.set(x, y, z);
+
+  scene.add(highBay);
+}
 
   // نحسب توزيع fixtures بناءً على البيانات
   const { fixtures, spacingX, spacingY, roomLength, roomWidth } = data;

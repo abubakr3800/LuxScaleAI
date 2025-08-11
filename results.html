@@ -42,7 +42,7 @@ function getToken() {
 function generateCSV(data) {
   const headers = Object.keys(data[0]);
   const csv = [headers.join(",")];
-  data.forEach(row => {
+  data.forEach((row , index) => {
     csv.push(headers.map(h => `"${row[h]}"`).join(","));
   });
   return csv.join("\n");
@@ -58,7 +58,7 @@ function generateCSV(data) {
     "spacing_x", "spacing_y", "avg_lux", "uniformity", "total_power"
   ];
   const csv = [headers.join(",")];
-  data.forEach(row => {
+  data.forEach((row , index) => {
     csv.push(keys.map(k => `"${row[k]}"`).join(","));
   });
   return csv.join("\n");
@@ -76,7 +76,7 @@ function displayResults(results) {
   const container = document.getElementById("resultsContainer");
   container.innerHTML = "";
   let counter = 1;
-  results.forEach(result => {
+  results.forEach((result , index) => {
     const card = document.createElement("div");
     card.className = "col-md-4 col-12";
     card.innerHTML = `
@@ -93,12 +93,26 @@ function displayResults(results) {
             <li class="list-group-item"><strong>Average Lux:</strong> ${result.avg_lux}</li>
             <li class="list-group-item"><strong>Uniformity:</strong> ${result.uniformity}</li>
             <li class="list-group-item"><strong>Total Power (W):</strong> ${result.total_power}</li>
+            <button class="btn btn-outline-primary mt-auto" onclick="goToLayout(${index})">عرض في Layout</button>
           </ul>
         </div>
       </div>
     `;
     container.appendChild(card);
   });
+}
+
+function goToLayout(index) {
+  const result = results[index];
+  const data = {
+    fixtures: result.fixtures,
+    spacingX: result.spacing_x,
+    spacingY: result.spacing_y,
+    roomLength: request.sides[0],
+    roomWidth: request.sides[1]
+  };
+  localStorage.setItem('lightingModelData', JSON.stringify(data));
+  window.location.href = 'maha/tt.html';
 }
 
 async function generatePDF(results, request, customer) {
@@ -113,245 +127,266 @@ async function generatePDF(results, request, customer) {
   const firstPage = pdfDoc.addPage([595.28, 841.89]); // A4
   firstPage.drawImage(bgImage, { x: 0, y: 0, width: firstPage.getWidth(), height: firstPage.getHeight() });
 
-  let y = firstPage.getHeight() - 100;
+  let y = firstPage.getHeight() - 95;
   const marginX = 70;
+  // const centerX = firstPage.getWidth() / 2;
 
-  firstPage.drawText("Lighting Simulation Report", {
-    x: marginX,
+  // firstPage.drawText("Lighting Simulation Report", {
+  //   x: centerX,
+  //   y: y,
+  //   size: 20,
+  //   font: font,
+  //   color: rgb(0.1, 0.1, 0.1)
+  // });
+  // y -= 40;
+
+
+  const title = "Lighting Simulation Report";
+  const fontSize = 20;
+  const textWidth = font.widthOfTextAtSize(title, fontSize);
+
+  // Page width
+  const pageWidth = firstPage.getWidth();
+
+  // Center position
+  const centerX = (pageWidth - textWidth) / 2;
+
+  firstPage.drawText(title, {
+    x: centerX,
     y: y,
-    size: 22,
+    size: fontSize,
     font: font,
-    color: rgb(0.1, 0.1, 0.6)
+    color: rgb(0.1, 0.1, 0.1)
   });
   y -= 40;
 
-  const customerFields = [
-    ["Customer Name", customer.name],
-    ["Email", customer.email],
-    ["Phone", customer.phone],
-    ["Company", customer.company],
-    ["Project Name", request.project_name],
-    ["Place", request.place],
-    ["Room Size (m)", `${request.sides[0]} x ${request.sides[1]}`],
-    ["Height (m)", request.height],
-    ["Submitted At", request.submitted_at]
-  ];
-
-  customerFields.forEach(([label, value]) => {
-    firstPage.drawText(`${label}: ${value}`, {
-      x: marginX,
-      y: y,
-      size: 14,
-      font: font,
-      color: rgb(0, 0, 0)
-    });
-    y -= 22;
-  });
-
-  // 2️⃣ Results Pages
-  const canvas = document.createElement("canvas");
-  canvas.width = 400;
-  canvas.height = 300;
-  const ctx = canvas.getContext("2d");
-
-  for (let i = 0; i < results.length; i++) {
-    const result = results[i];
-
-    const fixtures = Number(result.fixtures) || 0;
-    const spacingX = Number(result.spacing_x) || 1;
-    const spacingY = Number(result.spacing_y) || 1;
-    const length = Number(request.sides[0]) || Number(request.sides[2]);
-    const width = Number(request.sides[1]) || Number(request.sides[3]);
-    drawDistribution(length, width, fixtures, spacingX, spacingY, canvas, ctx);
-
-    const distImgBytes = await fetch(canvas.toDataURL("image/png")).then(res => res.arrayBuffer());
-    const distImage = await pdfDoc.embedPng(distImgBytes);
-
-    const page = pdfDoc.addPage([595.28, 841.89]);
-    page.drawImage(bgImage, { x: 0, y: 0, width: page.getWidth(), height: page.getHeight() });
-
-    let yPos = page.getHeight() - 100;
-    page.drawText(`Option ${i + 1}`, {
-      x: marginX,
-      y: yPos,
-      size: 20,
-      font: font,
-      color: rgb(0.1, 0.1, 0.6),
-    });
-
-    yPos -= 30;
-    const fields = [
-      ["Luminaire", result.luminaire],
-      ["Power (W)", result.power],
-      ["Efficacy (lm/W)", result.efficacy],
-      ["Fixtures", result.fixtures],
-      ["Spacing X (m)", result.spacing_x],
-      ["Spacing Y (m)", result.spacing_y],
-      ["Average Lux", result.avg_lux],
-      ["Uniformity", result.uniformity],
-      ["Total Power (W)", result.total_power],
+    const customerFields = [
+      ["Customer Name", customer.name],
+      ["Email", customer.email],
+      ["Phone", customer.phone],
+      ["Company", customer.company],
+      ["Project Name", request.project_name],
+      ["Place", request.place],
+      ["Room Size (m)", `${request.sides[0]} x ${request.sides[1]}`],
+      ["Height (m)", request.height],
+      ["Submitted At", request.submitted_at]
     ];
-    fields.forEach(([label, value]) => {
-      page.drawText(`${label}: ${value}`, {
+
+    customerFields.forEach(([label, value]) => {
+      firstPage.drawText(`${label}: ${value}`, {
         x: marginX,
-        y: yPos,
+        y: y,
         size: 14,
         font: font,
-        color: rgb(0, 0, 0),
+        color: rgb(0, 0, 0)
       });
-      yPos -= 22;
+      y -= 22;
     });
 
-    page.drawImage(distImage, { x: marginX, y: 120, width: 400, height: 300 });
-  }
+    // 2️⃣ Results Pages
+    const canvas = document.createElement("canvas");
+    canvas.width = 400;
+    canvas.height = 300;
+    const ctx = canvas.getContext("2d");
 
-  // 3️⃣ Last Page - Technical Note
-  const notePage = pdfDoc.addPage([595.28, 841.89]);
-  notePage.drawImage(bgImage, { x: 0, y: 0, width: notePage.getWidth(), height: notePage.getHeight() });
+    for (let i = 0; i < results.length; i++) {
+      const result = results[i];
 
-  let noteY = notePage.getHeight() - 150;
-  notePage.drawText("Technical Note", {
-    x: marginX,
-    y: noteY,
-    size: 20,
-    font: font,
-    color: rgb(0.8, 0.1, 0.1) // Red for emphasis
-  });
+      const fixtures = Number(result.fixtures) || 0;
+      const spacingX = Number(result.spacing_x) || 1;
+      const spacingY = Number(result.spacing_y) || 1;
+      const length = Number(request.sides[0]) || Number(request.sides[2]);
+      const width = Number(request.sides[1]) || Number(request.sides[3]);
+      drawDistribution(length, width, fixtures, spacingX, spacingY, canvas, ctx);
 
-  noteY -= 30;
-  const noteLines = [
-    "To avoid electrical instability issues, always use drivers with built-in protections:",
-    "- Over voltage protection",
-    "- Over current protection"
-  ];
-  noteLines.forEach(line => {
-    notePage.drawText(line, {
+      const distImgBytes = await fetch(canvas.toDataURL("image/png")).then(res => res.arrayBuffer());
+      const distImage = await pdfDoc.embedPng(distImgBytes);
+
+      const page = pdfDoc.addPage([595.28, 841.89]);
+      page.drawImage(bgImage, { x: 0, y: 0, width: page.getWidth(), height: page.getHeight() });
+
+      let yPos = page.getHeight() - 95;
+      page.drawText(`Option ${i + 1}`, {
+        x: marginX,
+        y: yPos,
+        size: 20,
+        font: font,
+        color: rgb(0.3, 0.3, 0.3),
+      });
+
+      yPos -= 30;
+      const fields = [
+        ["Luminaire", result.luminaire],
+        ["Power (W)", result.power],
+        ["Efficacy (lm/W)", result.efficacy],
+        ["Fixtures", result.fixtures],
+        ["Spacing X (m)", result.spacing_x],
+        ["Spacing Y (m)", result.spacing_y],
+        ["Average Lux", result.avg_lux],
+        ["Uniformity", result.uniformity],
+        ["Total Power (W)", result.total_power],
+      ];
+      fields.forEach(([label, value]) => {
+        page.drawText(`${label}: ${value}`, {
+          x: marginX,
+          y: yPos,
+          size: 14,
+          font: font,
+          color: rgb(0, 0, 0),
+        });
+        yPos -= 22;
+      });
+
+      page.drawImage(distImage, { x: marginX, y: 120, width: 400, height: 300 });
+    }
+
+    // 3️⃣ Last Page - Technical Note
+    const notePage = pdfDoc.addPage([595.28, 841.89]);
+    notePage.drawImage(bgImage, { x: 0, y: 0, width: notePage.getWidth(), height: notePage.getHeight() });
+
+    let noteY = notePage.getHeight() - 150;
+    notePage.drawText("Technical Note", {
       x: marginX,
       y: noteY,
-      size: 14,
+      size: 20,
       font: font,
-      color: rgb(0, 0, 0)
+      color: rgb(0.3, 0.3, 0.3) // Red for emphasis
     });
-    noteY -= 22;
+
+    noteY -= 30;
+    const noteLines = [
+      "To avoid electrical instability issues, always use drivers with built-in protections:",
+      "- Over voltage protection",
+      "- Over current protection"
+    ];
+    noteLines.forEach(line => {
+      notePage.drawText(line, {
+        x: marginX,
+        y: noteY,
+        size: 14,
+        font: font,
+        color: rgb(0, 0, 0)
+      });
+      noteY -= 22;
+    });
+
+    // 4️⃣ Save PDF
+    const pdfBytes = await pdfDoc.save();
+    const blob = new Blob([pdfBytes], { type: "application/pdf" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `lighting_results_${new Date().toISOString().split('T')[0]}.pdf`;
+    link.click();
+  }
+
+
+  // Load results from API using token
+  async function loadResults() {
+    const token = getToken();
+    console.log("Token:", token);
+    
+    if (token == null || token.trim() === "") {
+      alert("No token provided.");
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_URL}?token=${encodeURIComponent(token)}`);
+      const data = await response.json();
+      console.log("API Response:", data);
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to fetch results.");
+      }
+      if (data.request && data.results) {
+        customer = data.customer; // ✅ Save customer
+        results = data.results;
+        request = data.request;
+        displayResults(results);
+      } else {
+        alert(data.message || "No results found.");
+      }
+    } catch (err) {
+      console.error("Fetch error:", err);
+      alert("Failed to load results.");
+    }
+  }
+
+  document.getElementById("downloadBtn").addEventListener("click", () => {
+    const csv = generateCSV(results);
+    downloadCSV(csv);
   });
 
-  // 4️⃣ Save PDF
-  const pdfBytes = await pdfDoc.save();
-  const blob = new Blob([pdfBytes], { type: "application/pdf" });
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = `lighting_results_${new Date().toISOString().split('T')[0]}.pdf`;
-  link.click();
-}
+  document.getElementById("pdfBtn").addEventListener("click", async () => {
+    await generatePDF(results, request, customer);
+  });
 
+  loadResults();
 
-// Load results from API using token
-async function loadResults() {
-  const token = getToken();
-  console.log("Token:", token);
-  
-  if (token == null || token.trim() === "") {
-    alert("No token provided.");
-    return;
-  }
+  function drawDistribution(lengthM, widthM, fixtures, spacingX, spacingY, canvas, ctx) {
+    const margin = 30;
+    const cw = canvas.width - margin * 2;
+    const ch = canvas.height - margin * 2;
 
-  try {
-    const response = await fetch(`${API_URL}?token=${encodeURIComponent(token)}`);
-    const data = await response.json();
-    console.log("API Response:", data);
-    if (!response.ok) {
-      throw new Error(data.message || "Failed to fetch results.");
+    const scaleX = cw / lengthM;
+    const scaleY = ch / widthM;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#f8f9fa';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(margin, margin, cw, ch);
+
+    let cols = Math.round(Math.sqrt(fixtures)) || 1;
+    let rows = Math.ceil(fixtures / cols);
+    if (spacingX > 0 && spacingY > 0) {
+      const approxCols = Math.max(1, Math.round(lengthM / spacingX));
+      const approxRows = Math.max(1, Math.round(widthM / spacingY));
+      if (approxCols * approxRows >= fixtures) {
+        cols = approxCols;
+        rows = approxRows;
+      }
     }
-    if (data.request && data.results) {
-      customer = data.customer; // ✅ Save customer
-      results = data.results;
-      request = data.request;
-      displayResults(results);
-    } else {
-      alert(data.message || "No results found.");
+
+    const cellW = cw / cols;
+    const cellH = ch / rows;
+    const fixtureR = Math.min(cellW, cellH) * 0.18;
+
+    let placed = 0;
+    for (let r = 0; r < rows && placed < fixtures; r++) {
+      for (let c = 0; c < cols && placed < fixtures; c++) {
+        const cx = margin + (c + 0.5) * cellW;
+        const cy = margin + (r + 0.5) * cellH;
+
+        const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, fixtureR * 4);
+        grad.addColorStop(0, 'rgba(255,200,0,0.9)');
+        grad.addColorStop(0.4, 'rgba(255,200,0,0.35)');
+        grad.addColorStop(1, 'rgba(255,200,0,0.01)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(cx, cy, fixtureR * 3.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#ffb84d';
+        ctx.beginPath();
+        ctx.arc(cx, cy, fixtureR, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(cx, cy, fixtureR * 0.35, 0, Math.PI * 2);
+        ctx.fill();
+
+        placed++;
+      }
     }
-  } catch (err) {
-    console.error("Fetch error:", err);
-    alert("Failed to load results.");
+
+    ctx.fillStyle = '#333';
+    ctx.font = '13px sans-serif';
+    ctx.fillText(`Room: ${lengthM} x ${widthM} m`, margin, canvas.height - 10);
+    ctx.fillText(`Fixtures: ${fixtures}  Grid: ${cols} x ${rows}`, canvas.width - 220, canvas.height - 10);
   }
-}
-
-document.getElementById("downloadBtn").addEventListener("click", () => {
-  const csv = generateCSV(results);
-  downloadCSV(csv);
-});
-
-document.getElementById("pdfBtn").addEventListener("click", async () => {
-  await generatePDF(results, request, customer);
-});
-
-loadResults();
-
-function drawDistribution(lengthM, widthM, fixtures, spacingX, spacingY, canvas, ctx) {
-  const margin = 30;
-  const cw = canvas.width - margin * 2;
-  const ch = canvas.height - margin * 2;
-
-  const scaleX = cw / lengthM;
-  const scaleY = ch / widthM;
-
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = '#f8f9fa';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  ctx.strokeStyle = '#333';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(margin, margin, cw, ch);
-
-  let cols = Math.round(Math.sqrt(fixtures)) || 1;
-  let rows = Math.ceil(fixtures / cols);
-  if (spacingX > 0 && spacingY > 0) {
-    const approxCols = Math.max(1, Math.round(lengthM / spacingX));
-    const approxRows = Math.max(1, Math.round(widthM / spacingY));
-    if (approxCols * approxRows >= fixtures) {
-      cols = approxCols;
-      rows = approxRows;
-    }
-  }
-
-  const cellW = cw / cols;
-  const cellH = ch / rows;
-  const fixtureR = Math.min(cellW, cellH) * 0.18;
-
-  let placed = 0;
-  for (let r = 0; r < rows && placed < fixtures; r++) {
-    for (let c = 0; c < cols && placed < fixtures; c++) {
-      const cx = margin + (c + 0.5) * cellW;
-      const cy = margin + (r + 0.5) * cellH;
-
-      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, fixtureR * 4);
-      grad.addColorStop(0, 'rgba(255,200,0,0.9)');
-      grad.addColorStop(0.4, 'rgba(255,200,0,0.35)');
-      grad.addColorStop(1, 'rgba(255,200,0,0.01)');
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.arc(cx, cy, fixtureR * 3.5, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = '#ffb84d';
-      ctx.beginPath();
-      ctx.arc(cx, cy, fixtureR, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = '#fff';
-      ctx.beginPath();
-      ctx.arc(cx, cy, fixtureR * 0.35, 0, Math.PI * 2);
-      ctx.fill();
-
-      placed++;
-    }
-  }
-
-  ctx.fillStyle = '#333';
-  ctx.font = '13px sans-serif';
-  ctx.fillText(`Room: ${lengthM} x ${widthM} m`, margin, canvas.height - 10);
-  ctx.fillText(`Fixtures: ${fixtures}  Grid: ${cols} x ${rows}`, canvas.width - 220, canvas.height - 10);
-}
 </script>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>

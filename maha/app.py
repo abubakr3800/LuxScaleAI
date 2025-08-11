@@ -62,6 +62,9 @@ def api_pdf():
     pdf_bytes.seek(0)
     return send_file(pdf_bytes, download_name="report.pdf", as_attachment=True)
 
+@app.route("/", methods=["GET"])
+def api_index():
+    return jsonify({"status": "success", "message": "Welcome to the API"})
 
 if __name__ == "__main__":
     app.run(debug=True)

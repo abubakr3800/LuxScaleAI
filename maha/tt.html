@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="ar">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Lighting Layout — Corrected Fixture Distribution</title>
+<style>
+  body { margin:0; overflow:hidden; background:#000; }
+  #info { position: absolute; left:12px; top:12px; color:#fff; font-family: Arial; font-size:12px; background: rgba(0,0,0,0.4); padding:8px; border-radius:6px; z-index:10; }
+</style>
+</head>
+<body>
+<div id="info">اِستخدم الماوس للتدوير - عجلة الفأرة للتقريب/التبعيد</div>
+
+<!-- three + controls -->
+<script src="js/three.min.js"></script>
+<script src="js/OrbitControls.js"></script>
+
+<script>
+/* ---------- load data ---------- */
+const defaultData = { fixtures:163, spacingX:4, spacingY:7, roomLength:270, roomWidth:15 };
+let raw = localStorage.getItem('lightingModelData');
+if (!raw) {
+  raw = JSON.stringify(defaultData);
+  localStorage.setItem('lightingModelData', raw);
+}
+const data = JSON.parse(raw);
+console.log('lightingModelData:', data);
+
+/* ---------- scene & renderer ---------- */
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x000000);
+
+const renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 5000);
+camera.position.set(Math.max(data.roomLength, data.roomWidth) * 0.6, Math.max(data.roomLength, data.roomWidth) * 0.35, Math.max(data.roomLength, data.roomWidth) * 0.7);
+camera.lookAt(0,0,0);
+
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+
+/* ---------- lighting (soft) ---------- */
+scene.add(new THREE.AmbientLight(0xffffff, 0.35));
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
+dirLight.position.set(100, 200, 100);
+dirLight.castShadow = true;
+dirLight.shadow.mapSize.set(2048, 2048);
+dirLight.shadow.camera.near = 10;
+dirLight.shadow.camera.far = 1000;
+scene.add(dirLight);
+
+/* ---------- room params ---------- */
+const fixtures = Math.max(1, Number(data.fixtures) || 1);
+const spacingX = Math.max(0.01, Number(data.spacingX) || 4);
+const spacingY = Math.max(0.01, Number(data.spacingY) || 7);
+const roomLength = Math.max(1, Number(data.roomLength) || 270); // Z
+const roomWidth  = Math.max(1, Number(data.roomWidth)  || 15);  // X
+
+const wallHeight = Math.max(4, Math.min(30, Math.round(Math.max(6, roomWidth/1.2))));
+const wallThickness = 0.5;
+
+/* ---------- floor & roof ---------- */
+const floor = new THREE.Mesh(
+  new THREE.PlaneGeometry(roomWidth, roomLength),
+  new THREE.MeshStandardMaterial({ color:0x0b0b0b })
+);
+floor.rotation.x = -Math.PI/2;
+floor.receiveShadow = true;
+scene.add(floor);
+
+const roof = new THREE.Mesh(
+  new THREE.PlaneGeometry(roomWidth, roomLength),
+  new THREE.MeshStandardMaterial({ color:0x111111, side:THREE.DoubleSide })
+);
+roof.rotation.x = Math.PI/2;
+roof.position.y = wallHeight;
+scene.add(roof);
+
+/* ---------- walls ---------- */
+const wallMat = new THREE.MeshStandardMaterial({ color: 0x121212, side: THREE.DoubleSide });
+// front wall with door hole
+const doorWidth = Math.min(Math.max(2, roomWidth * 0.25), roomWidth - 1);
+const doorHeight = Math.min(Math.max(2.2, wallHeight - 1), wallHeight - 0.5);
+
+const shape = new THREE.Shape();
+shape.moveTo(-roomWidth/2, 0);
+shape.lineTo(roomWidth/2, 0);
+shape.lineTo(roomWidth/2, wallHeight);
+shape.lineTo(-roomWidth/2, wallHeight);
+shape.closePath();
+
+const doorPath = new THREE.Path();
+doorPath.moveTo(-doorWidth/2, 0);
+doorPath.lineTo(doorWidth/2, 0);
+doorPath.lineTo(doorWidth/2, doorHeight);
+doorPath.lineTo(-doorWidth/2, doorHeight);
+doorPath.closePath();
+shape.holes.push(doorPath);
+
+const extrude = new THREE.ExtrudeGeometry(shape, { depth: wallThickness, bevelEnabled:false });
+const frontWall = new THREE.Mesh(extrude, wallMat);
+frontWall.rotation.y = Math.PI;
+frontWall.position.z = roomLength/2 + wallThickness/2;
+frontWall.castShadow = true;
+scene.add(frontWall);
+
+const backWall = new THREE.Mesh(new THREE.BoxGeometry(roomWidth, wallHeight, wallThickness), wallMat);
+backWall.position.set(0, wallHeight/2, -roomLength/2);
+backWall.castShadow = true;
+scene.add(backWall);
+
+const rightWall = new THREE.Mesh(new THREE.BoxGeometry(wallThickness, wallHeight, roomLength + wallThickness*2), wallMat);
+rightWall.position.set(roomWidth/2 + wallThickness/2, wallHeight/2, 0);
+rightWall.castShadow = true;
+scene.add(rightWall);
+
+const leftWall = new THREE.Mesh(new THREE.BoxGeometry(wallThickness, wallHeight, roomLength + wallThickness*2), wallMat);
+leftWall.position.set(-roomWidth/2 - wallThickness/2, wallHeight/2, 0);
+leftWall.castShadow = true;
+scene.add(leftWall);
+
+/* optional door leaf */
+const doorLeaf = new THREE.Mesh(new THREE.BoxGeometry(doorWidth*0.98, doorHeight, 0.08), new THREE.MeshStandardMaterial({ color:0x4d2e1b }));
+doorLeaf.position.set(0, doorHeight/2, roomLength/2 + 0.06);
+doorLeaf.castShadow = true;
+scene.add(doorLeaf);
+
+/* ---------- compute grid EXACTLY ---------- */
+const maxCols = Math.floor(roomWidth / spacingX);
+const maxRows = Math.floor(roomLength / spacingY);
+
+let cols = maxCols > 0 ? maxCols : 1;
+let rows = maxRows > 0 ? maxRows : 1;
+
+if (cols * rows < fixtures) {
+  rows = Math.ceil(fixtures / cols);
+  if (rows > maxRows) {
+    rows = maxRows;
+    cols = Math.ceil(fixtures / rows);
+    if (cols > maxCols) {
+      cols = maxCols;
+      console.warn("عدد الكشافات أكبر من مساحة التوزيع. قلل العدد أو زود المسافات.");
+    }
+  }
+}
+
+const gridWidth = (cols - 1) * spacingX;
+const gridLength = (rows - 1) * spacingY;
+const startX = -gridWidth / 2;
+const startZ = -gridLength / 2;
+const mountY = wallHeight - 0.5; // نازل نص متر عن السقف
+
+/* ---------- highbay model ---------- */
+function createHighbayModel() {
+  const g = new THREE.Group();
+  const metal = new THREE.MeshStandardMaterial({ color:0x2b2b2b, metalness:0.7, roughness:0.25 });
+  const lensMat = new THREE.MeshBasicMaterial({ color:0xfff6c8, transparent:true, opacity:0.95 });
+
+  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,0.25,12), metal);
+  stem.position.y = -0.125; g.add(stem);
+
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(0.6,24,12,0,Math.PI*2,0,Math.PI/2), metal);
+  dome.position.y = -0.65; g.add(dome);
+
+  const lens = new THREE.Mesh(new THREE.CircleGeometry(0.55,32), lensMat);
+  lens.rotation.x = -Math.PI/2; lens.position.y = -1.05; g.add(lens);
+
+//   const beam = new THREE.Mesh(new THREE.ConeGeometry(2.0, 7, 32, 1, true), new THREE.MeshBasicMaterial({ color:0xfff5b0, transparent:true, opacity:0.06, side:THREE.DoubleSide, depthWrite:false }));
+//   beam.rotation.x = Math.PI; beam.position.y = -1.05 - 3.5; g.add(beam);
+
+    const beam = new THREE.Mesh(
+    new THREE.ConeGeometry(2.0, 7, 42, 1, true),
+    new THREE.MeshBasicMaterial({ color: 0xf0f0f0, transparent: true, opacity: 0.06, side: THREE.DoubleSide, depthWrite: false })
+    );
+    beam.rotation.x = 0;  // رأس المخروط لأعلى (مش مقلوب)
+    beam.position.y = -7.05 + 3.5; // عوض عن النزول تحت، خليها فوق
+    g.add(beam);
+
+  return g;
+}
+const baseFixture = createHighbayModel();
+
+/* ---------- place fixtures with soft pointlights (no shadows) ---------- */
+let placed = 0;
+for (let r = 0; r < rows && placed < fixtures; r++) {
+  for (let c = 0; c < cols && placed < fixtures; c++) {
+    const fx = baseFixture.clone();
+    const x = startX + c * spacingX;
+    const z = startZ + r * spacingY;
+    fx.position.set(x, mountY, z);
+    scene.add(fx);
+
+    const glow = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), new THREE.MeshBasicMaterial({ color:0xf0f0f0, transparent:true, opacity:0.9 }));
+    glow.position.set(x, mountY - 1.05, z);
+    scene.add(glow);
+
+    // soft point light (low intensity, no shadow)
+    const p = new THREE.PointLight(0xfff2c0, 0.4, Math.max(roomLength, roomWidth) * 0.6, 2);
+    p.position.set(x, mountY - 1.05, z);
+    p.castShadow = false;
+    scene.add(p);
+
+    placed++;
+  }
+}
+console.log('Placed', placed, 'fixtures (cols x rows =', cols, 'x', rows, '). gridWidth:', gridWidth, 'gridLength:', gridLength);
+
+/* ---------- outline around distribution ---------- */
+const outlinePts = [
+  new THREE.Vector3(-gridWidth/2 - 0.25, 0.12, -gridLength/2 - 0.25),
+  new THREE.Vector3(gridWidth/2 + 0.25, 0.12, -gridLength/2 - 0.25),
+  new THREE.Vector3(gridWidth/2 + 0.25, 0.12, gridLength/2 + 0.25),
+  new THREE.Vector3(-gridWidth/2 - 0.25, 0.12, gridLength/2 + 0.25),
+  new THREE.Vector3(-gridWidth/2 - 0.25, 0.12, -gridLength/2 - 0.25),
+];
+const outline = new THREE.Line(new THREE.BufferGeometry().setFromPoints(outlinePts), new THREE.LineBasicMaterial({ color:0xffcc00 }));
+scene.add(outline);
+
+/* ---------- text sprite utility (world-scaled, faces camera) ---------- */
+function makeTextSpriteWorld(text, opts = {}) {
+  const font = opts.font || "24px Arial";
+  const padding = opts.padding || 6;
+  const bg = opts.bg || "rgba(0,0,0,0.6)";
+  const color = opts.color || "#ffffff";
+  const scaleMultiplier = opts.scale || 0.02; // adjust to control world size
+
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  ctx.font = font;
+  const metrics = ctx.measureText(text);
+  const textW = Math.ceil(metrics.width);
+  const textH = parseInt(font);
+
+  canvas.width = textW + padding*2;
+  canvas.height = textH + padding*2;
+
+  // scale for crispness on hi-dpi
+  const DPR = Math.max(1, window.devicePixelRatio || 1);
+  canvas.width *= DPR; canvas.height *= DPR;
+  ctx.scale(DPR, DPR);
+  ctx.font = font;
+
+  // background and text
+  ctx.fillStyle = bg;
+  roundRect(ctx, 0, 0, textW + padding*2, textH + padding*2, 4);
+  ctx.fill();
+
+  ctx.fillStyle = color;
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, padding, (textH + padding*2)/2);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+
+  const material = new THREE.SpriteMaterial({ map: texture, depthTest: false, depthWrite: false, sizeAttenuation: true });
+  const sprite = new THREE.Sprite(material);
+
+  // set scale in world units proportional to canvas size
+  const worldScale = ( (textW + padding*2) / 100 ) * scaleMultiplier * (DPR);
+  const worldScaleY = ( (textH + padding*2) / 100 ) * scaleMultiplier * (DPR);
+  sprite.scale.set(worldScale * 100, worldScaleY * 100, 1); // tweak multiplier to get readable size
+
+  return sprite;
+}
+// helper to draw rounded rect
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.arcTo(x+w, y, x+w, y+h, r);
+  ctx.arcTo(x+w, y+h, x, y+h, r);
+  ctx.arcTo(x, y+h, x, y, r);
+  ctx.arcTo(x, y, x+w, y, r);
+  ctx.closePath();
+}
+
+/* ---------- arrows & labels (smaller & positioned under arrows) ---------- */
+/* X - width arrow (on front side slightly offset) */
+const arrowLenX = roomWidth; // show room width
+const arrowStartX = new THREE.Vector3(-arrowLenX/2, 0.05, gridLength/2 + 0.6);
+const arrowDirX = new THREE.Vector3(1,0,0);
+const arrowX = new THREE.ArrowHelper(arrowDirX, arrowStartX, arrowLenX, 0xffcc00, 0.25, 0.12);
+arrowX.line.material.linewidth = 2;
+scene.add(arrowX);
+const widthLabel = makeTextSpriteWorld(`${roomWidth} m`, { font:"20px Arial", padding:6, scale:0.018 });
+widthLabel.position.set(0, -0.18, gridLength/2 + 0.6);
+scene.add(widthLabel);
+
+/* Z - length arrow (on right side slightly offset) */
+const arrowLenZ = roomLength;
+const arrowStartZ = new THREE.Vector3(gridWidth/2 + 0.6, 0.05, -arrowLenZ/2);
+const arrowDirZ = new THREE.Vector3(0,0,1);
+const arrowZ = new THREE.ArrowHelper(arrowDirZ, arrowStartZ, arrowLenZ, 0x66ccff, 0.25, 0.12);
+scene.add(arrowZ);
+const lengthLabel = makeTextSpriteWorld(`${roomLength} m`, { font:"20px Arial", padding:6, scale:0.018 });
+lengthLabel.position.set(gridWidth/2 + 0.8, -0.18, 0);
+scene.add(lengthLabel);
+
+/* Y - height arrow (vertical near left-front) */
+const arrowLenY = wallHeight;
+const arrowStartY = new THREE.Vector3(-gridWidth/2 - 1.0, 0.05, gridLength/2 + 0.6);
+const arrowDirY = new THREE.Vector3(0,1,0);
+const arrowY = new THREE.ArrowHelper(arrowDirY, arrowStartY, arrowLenY, 0x99ff99, 0.25, 0.12);
+scene.add(arrowY);
+const heightLabel = makeTextSpriteWorld(`${wallHeight} m`, { font:"18px Arial", padding:6, scale:0.017 });
+heightLabel.position.set(arrowStartY.x - 0.2, wallHeight/2 - 0.1, arrowStartY.z + 0.15);
+scene.add(heightLabel);
+
+/* ---------- spacing labels (small, non-intrusive) ---------- */
+if (cols > 1) {
+  const p0 = new THREE.Vector3(startX, 0.05, startZ - 0.4);
+  const p1 = new THREE.Vector3(startX + spacingX, 0.05, startZ - 0.4);
+  const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([p0,p1]), new THREE.LineBasicMaterial({ color:0xffcc00 }));
+  scene.add(line);
+  const sLabel = makeTextSpriteWorld(`${spacingX} m`, { font:"16px Arial", padding:4, scale:0.015 });
+  sLabel.position.set((p0.x + p1.x)/2, 0.25, p0.z - 0.08);
+  scene.add(sLabel);
+}
+if (rows > 1) {
+  const q0 = new THREE.Vector3(startX - 0.4, 0.05, startZ);
+  const q1 = new THREE.Vector3(startX - 0.4, 0.05, startZ + spacingY);
+  const line2 = new THREE.Line(new THREE.BufferGeometry().setFromPoints([q0,q1]), new THREE.LineBasicMaterial({ color:0x66ccff }));
+  scene.add(line2);
+  const sLabel2 = makeTextSpriteWorld(`${spacingY} m`, { font:"16px Arial", padding:4, scale:0.015 });
+  sLabel2.position.set(q0.x - 0.08, 0.25, (q0.z + q1.z)/2);
+  scene.add(sLabel2);
+}
+
+/* ---------- corner markers (tiny) ---------- */
+const cornerMat = new THREE.MeshStandardMaterial({ color: 0xffcc00 });
+const corners = [
+  new THREE.Vector3(-gridWidth/2, 0.02, -gridLength/2),
+  new THREE.Vector3(gridWidth/2, 0.02, -gridLength/2),
+  new THREE.Vector3(gridWidth/2, 0.02, gridLength/2),
+  new THREE.Vector3(-gridWidth/2, 0.02, gridLength/2)
+];
+corners.forEach((p, idx) => {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(0.12,0.02,0.12), cornerMat);
+  m.position.copy(p);
+  scene.add(m);
+});
+
+/* ---------- animation loop ---------- */
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}
+animate();
+
+/* ---------- responsiveness ---------- */
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+</body>
+</html>

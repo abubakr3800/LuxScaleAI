@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Layout from localStorage — Room with Door & OrbitControls</title>
+  <style>body{margin:0;overflow:hidden;background:#111;} canvas{display:block;}</style>
+</head>
+<body>
+
+<!-- three + controls (non-module) -->
+<script src="js/three.min.js"></script>
+<script src="js/OrbitControls.js"></script>
+
+<script>
+/* ------------------------
+   Load data from localStorage
+   Expected shape example:
+   {"fixtures":163,"spacingX":4,"spacingY":7,"roomLength":270,"roomWidth":15}
+   ------------------------*/
+let raw = localStorage.getItem('lightingModelData');
+if (!raw) {
+  // إذا مش موجود، نحط البيانات اللي أعطيتني كـ default
+  raw = JSON.stringify({"fixtures":163,"spacingX":4,"spacingY":7,"roomLength":270,"roomWidth":15});
+  localStorage.setItem('lightingModelData', raw);
+}
+const data = JSON.parse(raw);
+console.log('lightingModelData:', data);
+
+/* ----- scene ----- */
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x222233);
+
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 2000);
+camera.position.set(Math.max(data.roomLength, data.roomWidth) * 0.7, Math.max(data.roomLength, data.roomWidth)*0.4, Math.max(data.roomLength, data.roomWidth) * 0.8);
+camera.lookAt(0, 0, 0);
+
+/* OrbitControls */
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+
+/* lights */
+scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+const sun = new THREE.DirectionalLight(0xffffff, 0.6); sun.position.set(50,100,50); scene.add(sun);
+
+/* ----- room parameters ----- */
+const roomLength = Number(data.roomLength) || 270; // along Z
+const roomWidth  = Number(data.roomWidth)  || 15;  // along X
+const wallHeight = Math.min( Math.max(6, Math.round(roomWidth/2)), 30 ); // reasonable height (or change to fixed)
+const wallThickness = 0.5;
+
+/* floor (centered) */
+const floorMat = new THREE.MeshStandardMaterial({color:0x333333});
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(roomWidth, roomLength), floorMat);
+floor.rotation.x = -Math.PI/2;
+scene.add(floor);
+
+/* roof */
+const wallMat = new THREE.MeshStandardMaterial({color:0xcccccc, side: THREE.DoubleSide});
+const roof = new THREE.Mesh(new THREE.PlaneGeometry(roomWidth, roomLength), wallMat);
+roof.rotation.x = Math.PI/2;
+roof.position.y = wallHeight;
+scene.add(roof);
+
+/* walls: we'll make front wall with a door hole (extrude), others are boxes */
+const doorWidth = Math.min( Math.max(2, roomWidth * 0.2 ), roomWidth - 1 ); // clamp
+const doorHeight = Math.min(7, wallHeight - 1);
+
+/* front wall shape with hole (door) */
+const wallShape = new THREE.Shape();
+wallShape.moveTo(-roomWidth/2, 0);
+wallShape.lineTo(roomWidth/2, 0);
+wallShape.lineTo(roomWidth/2, wallHeight);
+wallShape.lineTo(-roomWidth/2, wallHeight);
+wallShape.closePath();
+
+// hole path for door (centered)
+const doorPath = new THREE.Path();
+doorPath.moveTo(-doorWidth/2, 0);
+doorPath.lineTo(doorWidth/2, 0);
+doorPath.lineTo(doorWidth/2, doorHeight);
+doorPath.lineTo(-doorWidth/2, doorHeight);
+doorPath.closePath();
+wallShape.holes.push(doorPath);
+
+const extrudeSettings = { depth: wallThickness, bevelEnabled: false };
+const frontWallGeo = new THREE.ExtrudeGeometry(wallShape, extrudeSettings);
+const frontWall = new THREE.Mesh(frontWallGeo, wallMat);
+frontWall.position.set( -0, 0, roomLength/2 ); // extrude goes +Z, we'll center by shifting
+// adjust because Extrude places origin at shape's (x,y), and depth extrudes towards +Z
+frontWall.rotation.y = Math.PI; // so thickness goes outward
+frontWall.position.z = roomLength/2 + wallThickness/2;
+scene.add(frontWall);
+
+/* back wall */
+const backWall = new THREE.Mesh(new THREE.BoxGeometry(roomWidth, wallHeight, wallThickness), wallMat);
+backWall.position.set(0, wallHeight/2, -roomLength/2 - 0);
+scene.add(backWall);
+
+/* right wall */
+const rightWall = new THREE.Mesh(new THREE.BoxGeometry(wallThickness, wallHeight, roomLength + wallThickness*2), wallMat);
+rightWall.position.set(roomWidth/2 + wallThickness/2, wallHeight/2, 0);
+scene.add(rightWall);
+
+/* left wall */
+const leftWall = new THREE.Mesh(new THREE.BoxGeometry(wallThickness, wallHeight, roomLength + wallThickness*2), wallMat);
+leftWall.position.set(-roomWidth/2 - wallThickness/2, wallHeight/2, 0);
+scene.add(leftWall);
+
+/* door object (optional: door leaf) - place just outside front wall so it looks like door */
+const doorLeaf = new THREE.Mesh(new THREE.BoxGeometry(doorWidth*0.98, doorHeight, 0.08), new THREE.MeshStandardMaterial({color:0x6b3e1e}));
+doorLeaf.position.set(0, doorHeight/2, roomLength/2 + 0.05 + 0.001);
+scene.add(doorLeaf);
+
+/* ----- Fixtures layout logic ----- */
+const fixtures = Math.max(1, Number(data.fixtures) || 1);
+const spacingX = Math.max(0.1, Number(data.spacingX) || 4);
+const spacingY = Math.max(0.1, Number(data.spacingY) || 7);
+
+// compute maximum columns that can fit across roomWidth using spacing
+// we consider positions spanning from -half to +half: count = floor(roomWidth/spacingX)+1
+let maxCols = Math.floor(roomWidth / spacingX) + 1;
+if (maxCols < 1) maxCols = 1;
+let cols = maxCols;
+let rows = Math.ceil(fixtures / cols);
+
+// compute maximum rows that can fit along roomLength
+let maxRows = Math.floor(roomLength / spacingY) + 1;
+if (maxRows < 1) maxRows = 1;
+
+// if computed rows exceed maxRows, switch strategy: use maxRows and increase cols
+if (rows > maxRows) {
+  rows = maxRows;
+  cols = Math.ceil(fixtures / rows);
+  // clamp cols to at least 1 and at most a large number but it should fit within roomWidth if spacing small
+}
+
+// Now we might have cols * rows >= fixtures. We'll place fixtures row-major until count achieved
+// compute actual used spacing: we keep the original spacing but center the grid within the room extents
+// compute grid extents (based on cols-1 * spacingX) etc
+const gridWidth = (cols - 1) * spacingX;
+const gridLength = (rows - 1) * spacingY;
+
+// center offsets
+const startX = - gridWidth / 2;
+const startZ = - gridLength / 2;
+
+// mount height (attached near ceiling)
+const mountY = wallHeight - 1.0;
+
+// fixture mesh (simple)
+const fixtureGroup = new THREE.Group();
+const fixtureMat = new THREE.MeshStandardMaterial({ color:0xffdd66, emissive:0xffdd66, emissiveIntensity:0.9 });
+const domeMat = new THREE.MeshStandardMaterial({ color:0x333333 });
+
+// we will create a single small fixture model and clone it
+function createFixtureModel(){
+  const g = new THREE.Group();
+  // stem
+  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,0.25,12), domeMat);
+  stem.position.y = -0.125; g.add(stem);
+  // dome
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(0.6, 24, 12, 0, Math.PI*2, 0, Math.PI/2), domeMat);
+  dome.position.y = -0.65; g.add(dome);
+  // lens
+  const lens = new THREE.Mesh(new THREE.CircleGeometry(0.55, 32), new THREE.MeshBasicMaterial({color:0xfff6c8, transparent:true, opacity:0.95}));
+  lens.rotation.x = -Math.PI/2; lens.position.y = -1.05; g.add(lens);
+  // small glow
+  const glow = new THREE.Mesh(new THREE.SphereGeometry(0.12,8,6), new THREE.MeshBasicMaterial({color:0xfff6c8, transparent:true, opacity:0.9}));
+  glow.position.y = -1.05; g.add(glow);
+  return g;
+}
+const baseFixture = createFixtureModel();
+
+// place fixtures, stop when reached
+let placed = 0;
+for (let r = 0; r < rows && placed < fixtures; r++) {
+  for (let c = 0; c < cols && placed < fixtures; c++) {
+    const fx = baseFixture.clone();
+    const x = startX + c * spacingX;
+    const z = startZ + r * spacingY;
+    fx.position.set(x, mountY, z);
+    scene.add(fx);
+    placed++;
+  }
+}
+console.log('Placed', placed, 'fixtures. grid cols x rows:', cols, 'x', rows);
+
+/* --- optional: outline box (wireframe) around the distribution for clarity --- */
+const outlineMat = new THREE.LineBasicMaterial({ color: 0xffcc00 });
+const outlineGeo = new THREE.BufferGeometry().setFromPoints([
+  new THREE.Vector3(-gridWidth/2 - 0.5, 0.1, -gridLength/2 - 0.5),
+  new THREE.Vector3( gridWidth/2 + 0.5, 0.1, -gridLength/2 - 0.5),
+  new THREE.Vector3( gridWidth/2 + 0.5, 0.1,  gridLength/2 + 0.5),
+  new THREE.Vector3(-gridWidth/2 - 0.5, 0.1,  gridLength/2 + 0.5),
+  new THREE.Vector3(-gridWidth/2 - 0.5, 0.1, -gridLength/2 - 0.5)
+]);
+const outline = new THREE.Line(outlineGeo, outlineMat);
+scene.add(outline);
+
+/* axes helper (optional) */
+// scene.add(new THREE.AxesHelper(5));
+
+/* render loop */
+function animate(){
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}
+animate();
+
+/* responsiveness */
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+</body>
+</html>
