@@ -6,11 +6,19 @@
 <title>Lighting Layout — Corrected Fixture Distribution</title>
 <style>
   body { margin:0; overflow:hidden; background:#000; }
+  .container{
+    direction: rtl;
+  }
   #info { position: absolute; left:12px; top:12px; color:#fff; font-family: Arial; font-size:12px; background: rgba(0,0,0,0.4); padding:8px; border-radius:6px; z-index:10; }
+  .info { position: absolute; left:12px; top:32px; color:#fff; font-family: Arial; font-size:12px; background: rgba(0,0,0,0.4); padding:8px; border-radius:6px; z-index:10; }
 </style>
 </head>
 <body>
-<div id="info">اِستخدم الماوس للتدوير - عجلة الفأرة للتقريب/التبعيد</div>
+
+  <div class="container">
+    <div id="info">اِستخدم الماوس للتدوير - عجلة الفأرة للتقريب/التبعيد</div>
+    <div id="valuesText" class="info"></div>
+  </div>
 
 <!-- three + controls -->
 <script src="js/three.min.js"></script>
@@ -26,6 +34,15 @@ if (!raw) {
 }
 const data = JSON.parse(raw);
 console.log('lightingModelData:', data);
+
+ // تحديث نص المعلومات
+ const valuesText = document.getElementById('valuesText');
+    valuesText.innerHTML = `
+      عدد الكشافات: <b>${data.fixtures}</b> |
+      المسافة بين الكشافات X: <b>${data.spacingX} متر</b> |
+      المسافة بين الكشافات Y: <b>${data.spacingY} متر</b> |
+      أبعاد الغرفة: <b>${data.roomLength} × ${data.roomWidth} متر</b>
+    `;
 
 /* ---------- scene & renderer ---------- */
 const scene = new THREE.Scene();
