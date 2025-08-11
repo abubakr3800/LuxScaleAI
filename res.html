@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LuxScaleAI Lighting Calculator</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+</head>
+<body class="bg-light">
+
+<div class="container py-5">
+  <h1 class="mb-4">Lighting Calculator</h1>
+
+  <!-- Form -->
+  <form id="calcForm" class="card p-4 shadow-sm">
+    <div class="mb-3">
+      <label class="form-label">Place</label>
+      <input type="text" class="form-control" id="place" placeholder="e.g. Classroom" required />
+    </div>
+
+    <div class="row">
+      <div class="col-md-3 mb-3">
+        <label class="form-label">Side 1 (m)</label>
+        <input type="number" step="0.01" class="form-control" id="side1" required />
+      </div>
+      <div class="col-md-3 mb-3">
+        <label class="form-label">Side 2 (m)</label>
+        <input type="number" step="0.01" class="form-control" id="side2" required />
+      </div>
+      <div class="col-md-3 mb-3">
+        <label class="form-label">Side 3 (m)</label>
+        <input type="number" step="0.01" class="form-control" id="side3" required />
+      </div>
+      <div class="col-md-3 mb-3">
+        <label class="form-label">Side 4 (m)</label>
+        <input type="number" step="0.01" class="form-control" id="side4" required />
+      </div>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Height (m)</label>
+      <input type="number" step="0.01" class="form-control" id="height" required />
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Project Info</label>
+      <textarea class="form-control" id="projectInfo" rows="3" placeholder='JSON format: {"client":"John","project":"School"}'></textarea>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Calculate</button>
+  </form>
+
+  <!-- Results -->
+  <div id="results" class="mt-4"></div>
+</div>
+
+<script>
+document.getElementById("calcForm").addEventListener("submit", async function(e) {
+  e.preventDefault();
+
+  const place = document.getElementById("place").value.trim();
+  const sides = [
+    parseFloat(document.getElementById("side1").value),
+    parseFloat(document.getElementById("side2").value),
+    parseFloat(document.getElementById("side3").value),
+    parseFloat(document.getElementById("side4").value)
+  ];
+  const height = parseFloat(document.getElementById("height").value);
+
+  let project_info;
+  try {
+    project_info = JSON.parse(document.getElementById("projectInfo").value || "{}");
+  } catch {
+    alert("Invalid JSON in Project Info");
+    return;
+  }
+
+  const payload = { place, sides, height, project_info };
+
+  try {
+    const response = await fetch("https://mahamonir.pythonanywhere.com/calculate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || "API Error");
+    }
+
+    // Display results
+    document.getElementById("results").innerHTML = `
+      <div class="alert alert-success">
+        <h5>Calculation Successful</h5>
+        <p><b>Length:</b> ${data.length}</p>
+        <p><b>Width:</b> ${data.width}</p>
+        <pre>${JSON.stringify(data.results, null, 2)}</pre>
+      </div>
+    `;
+  } catch (err) {
+    document.getElementById("results").innerHTML = `
+      <div class="alert alert-danger">Error: ${err.message}</div>
+    `;
+  }
+});
+</script>
+
+</body>
+</html>
