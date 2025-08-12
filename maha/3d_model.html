@@ -177,30 +177,43 @@ const mountY = wallHeight - 0.5; // نازل نص متر عن السقف
 function createHighbayModel() {
   const g = new THREE.Group();
   const metal = new THREE.MeshStandardMaterial({ color:0x2b2b2b, metalness:0.7, roughness:0.25 });
-  const lensMat = new THREE.MeshBasicMaterial({ color:0xfff6c8, transparent:true, opacity:0.95 });
 
-  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,0.25,12), metal);
-  stem.position.y = -0.125; g.add(stem);
+  // --- This replaces your lens with an image ---
+  const textureLoader = new THREE.TextureLoader();
+  const texture = textureLoader.load('high.jpeg'); // Replace with your file path
+  // Optional: load depth map for 3D relief
+  const depthMap = textureLoader.load('depth.png');
 
-  const dome = new THREE.Mesh(new THREE.SphereGeometry(0.6,24,12,0,Math.PI*2,0,Math.PI/2), metal);
-  dome.position.y = -0.65; g.add(dome);
+  const lensMat = new THREE.MeshStandardMaterial({
+    map: texture,
+    transparent: true,
+    displacementMap: depthMap,        // Uncomment if you have depth map
+    displacementScale: 0.2
+  });
 
-  const lens = new THREE.Mesh(new THREE.CircleGeometry(0.55,32), lensMat);
-  lens.rotation.x = -Math.PI/2; lens.position.y = -1.05; g.add(lens);
+  const lens = new THREE.Mesh(new THREE.CircleGeometry(0.55, 32), lensMat);
+  lens.rotation.x = -Math.PI / 2;
+  lens.position.y = -1.05;
+  g.add(lens);
 
-//   const beam = new THREE.Mesh(new THREE.ConeGeometry(2.0, 7, 32, 1, true), new THREE.MeshBasicMaterial({ color:0xfff5b0, transparent:true, opacity:0.06, side:THREE.DoubleSide, depthWrite:false }));
-//   beam.rotation.x = Math.PI; beam.position.y = -1.05 - 3.5; g.add(beam);
-
-    const beam = new THREE.Mesh(
+  // Keep the beam if needed
+  const beam = new THREE.Mesh(
     new THREE.ConeGeometry(2.0, 7, 42, 1, true),
-    new THREE.MeshBasicMaterial({ color: 0xf0f0f0, transparent: true, opacity: 0.06, side: THREE.DoubleSide, depthWrite: false })
-    );
-    beam.rotation.x = 0;  // رأس المخروط لأعلى (مش مقلوب)
-    beam.position.y = -7.05 + 3.5; // عوض عن النزول تحت، خليها فوق
-    g.add(beam);
+    new THREE.MeshBasicMaterial({
+      color: 0xf0f0f0,
+      transparent: true,
+      opacity: 0.06,
+      side: THREE.DoubleSide,
+      depthWrite: false
+    })
+  );
+  beam.rotation.x = 0;
+  beam.position.y = -7.05 + 3.5;
+  g.add(beam);
 
   return g;
 }
+
 const baseFixture = createHighbayModel();
 
 /* ---------- place fixtures with soft pointlights (no shadows) ---------- */
@@ -213,9 +226,9 @@ for (let r = 0; r < rows && placed < fixtures; r++) {
     fx.position.set(x, mountY, z);
     scene.add(fx);
 
-    const glow = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), new THREE.MeshBasicMaterial({ color:0xf0f0f0, transparent:true, opacity:0.9 }));
-    glow.position.set(x, mountY - 1.05, z);
-    scene.add(glow);
+    // const glow = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), new THREE.MeshBasicMaterial({ color:0xf0f0f0, transparent:true, opacity:0.9 }));
+    // glow.position.set(x, mountY - 1.05, z);
+    // scene.add(glow);
 
     // soft point light (low intensity, no shadow)
     const p = new THREE.PointLight(0xfff2c0, 0.4, Math.max(roomLength, roomWidth) * 0.6, 2);

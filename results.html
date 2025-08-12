@@ -32,6 +32,7 @@ const backgroundImageUrl = "assets/pdfBG.png"; // ✅ CHANGE IF NEEDED
 
 let results = [];
 let request = {};
+let customer = {};
 
 // Helper to get token from ?token=xxx
 function getToken() {
@@ -93,7 +94,10 @@ function displayResults(results) {
             <li class="list-group-item"><strong>Average Lux:</strong> ${result.avg_lux}</li>
             <li class="list-group-item"><strong>Uniformity:</strong> ${result.uniformity}</li>
             <li class="list-group-item"><strong>Total Power (W):</strong> ${result.total_power}</li>
-            <button class="btn btn-outline-primary mt-auto" onclick="goToLayout(${index})">عرض في Layout</button>
+            <button class="btn btn-outline-primary mt-auto" onclick="goToLayout(${index})">View in Layout</button>
+            <button class="btn btn-outline-primary mt-3" onclick="downloadCSV(generateCSV([results[${index}])])">Download CSV</button>
+            <button class="btn btn-outline-primary mt-3" onclick="generatePDF([results[${index}]], request, customer)">Download PDF</button>
+            <button class="btn btn-outline-primary mt-3" onclick="displayPriceRequest(${index} , request)">Need a price request</button>
           </ul>
         </div>
       </div>
@@ -294,6 +298,12 @@ async function generatePDF(results, request, customer) {
       const response = await fetch(`${API_URL}?token=${encodeURIComponent(token)}`);
       const data = await response.json();
       console.log("API Response:", data);
+      localStorage.setItem("results", JSON.stringify(data.results));
+      localStorage.setItem("request", JSON.stringify(data.request));
+      localStorage.setItem("customer", JSON.stringify(data.customer));
+      customer = data.customer;
+      request = data.request;
+      results = data.results;
       if (!response.ok) {
         throw new Error(data.message || "Failed to fetch results.");
       }
@@ -386,6 +396,44 @@ async function generatePDF(results, request, customer) {
     ctx.font = '13px sans-serif';
     ctx.fillText(`Room: ${lengthM} x ${widthM} m`, margin, canvas.height - 10);
     ctx.fillText(`Fixtures: ${fixtures}  Grid: ${cols} x ${rows}`, canvas.width - 220, canvas.height - 10);
+  }
+
+  function displayPriceRequest(index ,req) {
+    console.log(results[index]);
+    console.log(index);
+    console.log(req);
+    console.log(customer);
+    console.log(request);
+    console.log(results[0]);
+    console.log(getToken());
+    fetch("http://localhost/sc-luxscaleai/api/submit_price.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        token: getToken(),
+        result: index,
+        name: customer.name,
+        email: customer.email,
+        phone: customer.phone,
+        company: customer.company,
+        project_name: request.project_name,
+        place: request.place,
+        sides: request.sides,
+        height: request.height,
+        customer: customer
+      })
+    })
+    .then(res => res.json())
+    .then(data => {
+      console.log(data);
+      localStorage.setItem("priceRequest", JSON.stringify(data));
+      if (data.status === "success") {
+        window.location.href = 'spec.html?token=' + getToken() + "&result=" + index;
+      }
+    })
+    .catch(err => {
+      console.error(err);
+    });
   }
 </script>
 
