@@ -6,11 +6,14 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 import tempfile
+from flask_cors import CORS
+
 
 # import your existing functions
 from lighting_calc import calculate_lighting, draw_heatmap
 
 app = Flask(__name__)
+CORS(app)
 
 @app.route("/calculate", methods=["POST"])
 def api_calculate():

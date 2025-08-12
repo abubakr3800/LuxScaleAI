@@ -1,5 +1,8 @@
 Flask
+flask-cors
 fpdf
 matplotlib
 numpy
 openai
+scikit-learn
+tensorflow

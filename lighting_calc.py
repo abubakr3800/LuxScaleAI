@@ -10,10 +10,7 @@ import json
 import datetime
 import openai
 
-
-
 openai.api_key = "chatgbt"
-
 
 results_global = []
 project_info_global = {}
@@ -207,10 +204,6 @@ def draw_heatmap(length, width, num_x, num_y):
     with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmpfile:
         fig.savefig(tmpfile.name, bbox_inches='tight')
         return tmpfile.name
-
-
-
-
    
 def export_csv(results, project_info):
     file_path = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV files", "*.csv")])
@@ -226,10 +219,6 @@ def export_csv(results, project_info):
         for res in results:
             writer.writerow(res.values())
     messagebox.showinfo("Success", "CSV exported successfully!")
-
-
-
-
     
 
 def export_pdf(results, project_info, length, width): # عاوزة افتكر اظبط ترقيم الاوبشن بكرة  
