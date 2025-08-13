@@ -312,7 +312,8 @@
 
         console.log("Sending to API:", data);
 
-        const res = await fetch("https://mahamonir.pythonanywhere.com/calculate", {
+        const res = await fetch("https://salma-maha.up.railway.app/calculate", {
+        // const res = await fetch("https://mahamonir.pythonanywhere.com/calculate", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(data),
